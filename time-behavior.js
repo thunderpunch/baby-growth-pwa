@@ -95,6 +95,7 @@ function prepareTimeInput(input){
   input.dataset.timeUiEnhanced='true';
   input.classList.add('native-time-hidden');
   input.tabIndex=-1;
+  input.disabled=true;
   input.setAttribute('aria-hidden','true');
 
   const button=document.createElement('button');
