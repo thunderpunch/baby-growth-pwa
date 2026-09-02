@@ -1,6 +1,6 @@
-const CACHE_NAME="baby-growth-pwa-v1.1-secure";
+const CACHE_NAME="baby-growth-pwa-v1.1.1-date-nav-fixed";
 const APP_SHELL=[
-  "./","./index.html","./styles.css","./app.js","./db.js","./manifest.webmanifest",
+  "./","./index.html","./styles.css","./styles-base.css","./app.js","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
