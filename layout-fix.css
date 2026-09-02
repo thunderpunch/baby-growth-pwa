@@ -48,19 +48,20 @@ label,
 input,
 select,
 textarea{
-  box-sizing:border-box;
-  width:100%;
+  box-sizing:border-box!important;
+  width:100%!important;
   min-width:0!important;
-  max-width:100%;
-  inline-size:100%;
+  max-width:100%!important;
+  inline-size:100%!important;
   min-inline-size:0!important;
-  max-inline-size:100%;
+  max-inline-size:100%!important;
 }
 
 /* Safari gives these controls a comparatively large intrinsic inline size. */
 input[type="date"],
 input[type="time"],
 select{
+  display:block;
   width:100%!important;
   min-width:0!important;
   max-width:100%!important;
@@ -108,20 +109,42 @@ select{
   overflow-wrap:anywhere;
 }
 
-/* The title-bar date picker must not claim more room than the bar can give it. */
+/* Top bar: controls must remain horizontal and must never collapse into vertical CJK text. */
+.topbar,
+.brand,
 .date-nav{
   min-width:0;
-  max-width:min(100%,430px);
+}
+.date-nav{
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap!important;
+  flex:0 0 auto;
+  max-width:min(100%,440px);
+}
+.date-nav button{
+  flex:0 0 auto!important;
+  min-width:44px;
+  white-space:nowrap!important;
+  word-break:keep-all!important;
+  overflow-wrap:normal!important;
+  writing-mode:horizontal-tb!important;
+}
+.date-nav .icon-btn{
+  width:44px;
+  min-width:44px;
+}
+.date-nav .today-btn{
+  min-width:58px!important;
+  padding-left:12px!important;
+  padding-right:12px!important;
 }
 .date-input{
   width:150px!important;
-  min-width:118px!important;
-  max-width:min(38vw,150px)!important;
+  min-width:124px!important;
+  max-width:min(36vw,150px)!important;
   inline-size:auto!important;
-  flex:0 1 150px;
-}
-.brand{
-  min-width:0;
+  flex:0 1 150px!important;
 }
 
 /* Keep the two-column tablet layout, but give the content column permission to shrink. */
@@ -132,24 +155,40 @@ select{
   grid-template-columns:repeat(2,minmax(0,1fr));
 }
 
-/* At narrower tablet widths, preserving control legibility is more important
-   than forcing two fields onto the same row. */
-@media (max-width:1100px){
+/* iPad landscape: the left profile card is already dense. Stack its form pairs
+   before native controls can touch the neighbouring column. */
+@media (max-width:1180px){
   .profile-grid{
-    grid-template-columns:minmax(0,1fr) minmax(290px,.72fr);
+    grid-template-columns:minmax(0,1fr) minmax(300px,.76fr);
   }
   .profile-grid > .card.section .fields2{
-    grid-template-columns:1fr;
+    grid-template-columns:1fr!important;
   }
 }
 
-@media (max-width:900px){
+@media (max-width:960px){
   .profile-grid,
   .data-grid{
     grid-template-columns:1fr;
   }
   .fields2{
     grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:700px){
+  .topbar{
+    gap:8px;
+  }
+  .brand-copy small{
+    display:none;
+  }
+  .date-nav{
+    max-width:calc(100vw - 132px);
+  }
+  .date-input{
+    min-width:112px!important;
+    max-width:34vw!important;
   }
 }
 
@@ -160,7 +199,10 @@ select{
     grid-template-columns:1fr;
   }
   .date-nav{
-    max-width:calc(100vw - 86px);
+    max-width:calc(100vw - 92px);
+  }
+  .date-nav .today-btn{
+    display:none!important;
   }
   .date-input{
     min-width:112px!important;
