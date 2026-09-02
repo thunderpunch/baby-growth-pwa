@@ -1,0 +1,169 @@
+/* Tablet/Safari layout hardening.
+   Native date/time/select controls can keep an intrinsic width that is wider
+   than their CSS grid track. Every reusable grid below must be shrinkable. */
+
+.fields2,
+.profile-grid,
+.data-grid,
+.module-grid,
+.export-grid,
+.display-choice,
+.segment,
+.email-row,
+.time-row,
+.modal-actions{
+  min-width:0;
+}
+
+.fields2{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  column-gap:12px;
+  row-gap:10px;
+}
+
+.fields2 > *,
+.profile-grid > *,
+.data-grid > *,
+.module-grid > *,
+.export-grid > *,
+.display-choice > *,
+.segment > *,
+.email-row > *,
+.time-row > *,
+.modal-actions > *{
+  min-width:0;
+  max-width:100%;
+}
+
+label,
+.profile-mode-pane,
+.phase-box,
+.right-profile-column,
+.card,
+.section,
+.data-card{
+  min-width:0;
+}
+
+input,
+select,
+textarea{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0!important;
+  max-width:100%;
+  inline-size:100%;
+  min-inline-size:0!important;
+  max-inline-size:100%;
+}
+
+/* Safari gives these controls a comparatively large intrinsic inline size. */
+input[type="date"],
+input[type="time"],
+select{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  inline-size:100%!important;
+  min-inline-size:0!important;
+  max-inline-size:100%!important;
+}
+
+select{
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.time-row{
+  grid-template-columns:minmax(0,1fr) auto;
+}
+.time-row > input{
+  min-width:0!important;
+}
+.time-row > .now-btn{
+  flex:0 0 auto;
+}
+
+.email-row{
+  grid-template-columns:minmax(0,1fr) auto;
+}
+
+.module-grid,
+.export-grid,
+.display-choice,
+.segment{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+.module,
+.modulecopy,
+.mode{
+  min-width:0;
+  max-width:100%;
+}
+.modulecopy small,
+.modulecopy b,
+.mode span,
+.mode b{
+  overflow-wrap:anywhere;
+}
+
+/* The title-bar date picker must not claim more room than the bar can give it. */
+.date-nav{
+  min-width:0;
+  max-width:min(100%,430px);
+}
+.date-input{
+  width:150px!important;
+  min-width:118px!important;
+  max-width:min(38vw,150px)!important;
+  inline-size:auto!important;
+  flex:0 1 150px;
+}
+.brand{
+  min-width:0;
+}
+
+/* Keep the two-column tablet layout, but give the content column permission to shrink. */
+.profile-grid{
+  grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);
+}
+.data-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+/* At narrower tablet widths, preserving control legibility is more important
+   than forcing two fields onto the same row. */
+@media (max-width:1100px){
+  .profile-grid{
+    grid-template-columns:minmax(0,1fr) minmax(290px,.72fr);
+  }
+  .profile-grid > .card.section .fields2{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:900px){
+  .profile-grid,
+  .data-grid{
+    grid-template-columns:1fr;
+  }
+  .fields2{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:620px){
+  .fields2,
+  .module-grid,
+  .export-grid{
+    grid-template-columns:1fr;
+  }
+  .date-nav{
+    max-width:calc(100vw - 86px);
+  }
+  .date-input{
+    min-width:112px!important;
+    max-width:42vw!important;
+  }
+}
