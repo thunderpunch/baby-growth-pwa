@@ -1,5 +1,6 @@
 @import url("./styles-base.css");
 
+/* Fixed title bar: keep the full bar pinned and align it with the page content. */
 .topbar{
   position:fixed;
   top:0;
@@ -7,10 +8,75 @@
   right:0;
   z-index:60;
   padding-top:calc(8px + env(safe-area-inset-top));
-  padding-left:max(16px,env(safe-area-inset-left));
-  padding-right:max(16px,env(safe-area-inset-right));
+  padding-left:max(14px,env(safe-area-inset-left),calc((100vw - 1300px)/2 + 14px));
+  padding-right:max(14px,env(safe-area-inset-right),calc((100vw - 1300px)/2 + 14px));
 }
 
 main{
   padding-top:calc(74px + env(safe-area-inset-top));
+}
+
+/* The global input rule adds margin-top; it should not shift the title-bar date picker. */
+.date-nav{flex:0 0 auto}
+.date-input{margin-top:0}
+.brand{flex:1 1 auto}
+
+/* Keep two-column form cells and common controls on the same visual baseline. */
+.fields2{align-items:start}
+.primary,
+.secondary,
+.context-toggle,
+.now-btn,
+.rowactions button,
+.segment button,
+.display-choice button,
+.filelabel{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1.2;
+}
+
+/* Email field + copy button had a 5px vertical mismatch. */
+.email-row{align-items:end}
+.email-row .secondary{
+  min-height:var(--control-h);
+  height:var(--control-h);
+  margin-top:5px;
+  white-space:nowrap;
+}
+
+/* Make paired export actions occupy equal-height, consistently aligned cards. */
+.export-grid{align-items:stretch}
+.mode{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  height:100%;
+  line-height:1.35;
+}
+.mode b{line-height:1.25}
+.mode span{margin-top:5px}
+
+/* Normalize browser-default paragraph spacing inside cards. */
+.data-card>p,
+.history-hero>p,
+.history-tip>p,
+.history-card>p{
+  margin:6px 0 10px;
+}
+
+/* Slightly stabilize variable-height settings cards and action areas. */
+.module{min-height:66px}
+.profile-save-row{align-items:center}
+#profileSaveStatus{
+  margin-top:7px!important;
+  min-height:22px!important;
+  padding-left:1px;
+  line-height:1.45;
+}
+.history-top .secondary{
+  min-height:42px;
+  padding:7px 12px;
 }
