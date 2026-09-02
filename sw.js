@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.4-profile-ui";
+const CACHE_NAME="baby-growth-pwa-v1.1.5-consumer-ui";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./app.js","./export-ipad.js","./profile-save-guard.js","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
