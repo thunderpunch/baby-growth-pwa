@@ -1,6 +1,6 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.11-network-first";
+const CACHE_NAME="baby-growth-pwa-v1.1.12-time-picker-zoom-guard";
 const APP_SHELL=[
-  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./time-behavior.js","./recent-milk-template.js","./update-coordinator.js","./db.js","./manifest.webmanifest",
+  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./time-behavior.js","./time-picker.css","./recent-milk-template.js","./update-coordinator.js","./gesture-guard.js","./interaction-guard.css","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
