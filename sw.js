@@ -1,6 +1,6 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.7-ipad-layout";
+const CACHE_NAME="baby-growth-pwa-v1.1.8-container-forms";
 const APP_SHELL=[
-  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.7","./app.js","./export-ipad.js","./profile-save-guard.js","./db.js","./manifest.webmanifest",
+  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
