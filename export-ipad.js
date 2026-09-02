@@ -1,3 +1,5 @@
+import "./profile-save-guard.js";
+
 function isIPadOS(){
   const ua=navigator.userAgent||"";
   const platform=navigator.platform||"";
