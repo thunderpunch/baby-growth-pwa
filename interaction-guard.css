@@ -1,0 +1,9 @@
+html,body,.app{
+  touch-action:pan-x pan-y;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+button,input,select,textarea,a,label{
+  touch-action:manipulation;
+}
