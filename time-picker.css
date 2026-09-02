@@ -1,0 +1,214 @@
+/* Five-minute time picker: the native time input remains as the data field,
+   while this UI is the only visible/interactive time control. */
+.native-time-hidden{
+  position:absolute!important;
+  width:1px!important;
+  min-width:1px!important;
+  height:1px!important;
+  min-height:1px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+}
+
+.time-display-btn{
+  box-sizing:border-box;
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  min-width:0;
+  min-height:48px;
+  padding:0 14px;
+  border:1px solid #ded8e3;
+  border-radius:12px;
+  background:#fff;
+  color:#302b36;
+  font:inherit;
+  font-size:16px;
+  font-weight:700;
+  line-height:1.2;
+  text-align:left;
+  white-space:nowrap;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.time-display-btn::after{
+  content:"›";
+  flex:0 0 auto;
+  color:#9a91a2;
+  font-size:22px;
+  font-weight:500;
+  line-height:1;
+}
+.time-display-btn.empty{
+  color:#8e8794;
+  font-weight:600;
+}
+.time-display-btn:focus-visible{
+  outline:3px solid rgba(215,127,162,.2);
+  outline-offset:1px;
+  border-color:#d77fa2;
+}
+.time-row .time-display-btn{
+  flex:1 1 0;
+  width:0;
+}
+
+body.time-picker-open{
+  overflow:hidden;
+}
+.time-picker-overlay{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(38,31,43,.28);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+}
+.time-picker-overlay[hidden]{
+  display:none!important;
+}
+.time-picker-sheet{
+  box-sizing:border-box;
+  width:min(480px,100%);
+  max-height:min(680px,calc(100dvh - 32px));
+  overflow:auto;
+  border:1px solid rgba(124,108,137,.16);
+  border-radius:24px;
+  background:#fffdfd;
+  box-shadow:0 22px 70px rgba(47,34,51,.22);
+  padding:20px;
+}
+.time-picker-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:18px;
+}
+.time-picker-heading{
+  min-width:0;
+}
+.time-picker-heading small{
+  display:block;
+  margin-bottom:3px;
+  color:#817887;
+  font-size:14px;
+  font-weight:700;
+}
+.time-picker-heading b{
+  display:block;
+  color:#302b36;
+  font-size:30px;
+  line-height:1.15;
+  letter-spacing:.02em;
+}
+.time-picker-close{
+  flex:0 0 auto;
+  width:44px;
+  min-width:44px;
+  height:44px;
+  border:0;
+  border-radius:50%;
+  background:#f5f1f5;
+  color:#655d69;
+  font-size:25px;
+  line-height:1;
+}
+.time-picker-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.time-picker-field{
+  min-width:0;
+}
+.time-picker-field > span{
+  display:block;
+  margin:0 0 7px 2px;
+  color:#756d7a;
+  font-size:14px;
+  font-weight:800;
+}
+.time-picker-select-wrap{
+  position:relative;
+}
+.time-picker-select-wrap::after{
+  content:"⌄";
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-55%);
+  pointer-events:none;
+  color:#8b8290;
+  font-size:18px;
+}
+.time-picker-select{
+  box-sizing:border-box!important;
+  display:block;
+  width:100%!important;
+  min-width:0!important;
+  height:58px;
+  min-height:58px;
+  padding:0 42px 0 14px!important;
+  border:1px solid #ded8e3!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  color:#302b36!important;
+  font-size:20px!important;
+  font-weight:800!important;
+  line-height:normal!important;
+  text-align:center;
+  text-align-last:center;
+}
+.time-picker-note{
+  margin-top:10px;
+  color:#877f8c;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.5;
+}
+.time-picker-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.35fr;
+  gap:10px;
+  margin-top:20px;
+}
+.time-picker-actions button{
+  min-height:48px;
+  border-radius:13px;
+  font-size:16px;
+  font-weight:800;
+}
+.time-picker-clear,
+.time-picker-now{
+  border:1px solid #ded8e3;
+  background:#fff;
+  color:#655d69;
+}
+.time-picker-confirm{
+  border:1px solid #d77fa2;
+  background:#d77fa2;
+  color:#fff;
+}
+
+@media (max-width:620px){
+  .time-picker-overlay{
+    align-items:flex-end;
+    padding:10px;
+  }
+  .time-picker-sheet{
+    width:100%;
+    border-radius:22px;
+    padding:18px;
+  }
+}
