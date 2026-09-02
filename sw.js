@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.1-date-nav-fixed";
+const CACHE_NAME="baby-growth-pwa-v1.1.2-topbar-fixed";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./app.js","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
