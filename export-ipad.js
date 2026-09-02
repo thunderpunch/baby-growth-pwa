@@ -2,6 +2,7 @@ import "./profile-save-guard.js";
 import "./time-behavior.js";
 import "./recent-milk-template.js";
 import "./update-coordinator.js";
+import "./gesture-guard.js";
 
 const layoutFix=document.createElement("link");
 layoutFix.rel="stylesheet";
