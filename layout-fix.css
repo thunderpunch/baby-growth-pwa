@@ -1,6 +1,6 @@
-/* Tablet/Safari layout hardening.
-   Native date/time/select controls can keep an intrinsic width that is wider
-   than their CSS grid track. Every reusable grid below must be shrinkable. */
+/* iPad/Safari form-layout hardening.
+   The key rule is to react to the width of the card that owns the form,
+   not only to the viewport width. */
 
 .fields2,
 .profile-grid,
@@ -15,10 +15,20 @@
   min-width:0;
 }
 
+/* Cards and modals become layout containers so their own available width
+   decides whether paired fields stay side by side or stack. */
+.card,
+.modalcard,
+.history-hero,
+.history-tip{
+  container-type:inline-size;
+}
+
 .fields2{
-  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
   column-gap:12px;
   row-gap:10px;
+  align-items:start;
 }
 
 .fields2 > *,
@@ -28,8 +38,6 @@
 .export-grid > *,
 .display-choice > *,
 .segment > *,
-.email-row > *,
-.time-row > *,
 .modal-actions > *{
   min-width:0;
   max-width:100%;
@@ -41,8 +49,12 @@ label,
 .right-profile-column,
 .card,
 .section,
-.data-card{
+.data-card,
+.module,
+.modulecopy,
+.mode{
   min-width:0;
+  max-width:100%;
 }
 
 input,
@@ -52,12 +64,10 @@ textarea{
   width:100%!important;
   min-width:0!important;
   max-width:100%!important;
-  inline-size:100%!important;
   min-inline-size:0!important;
   max-inline-size:100%!important;
 }
 
-/* Safari gives these controls a comparatively large intrinsic inline size. */
 input[type="date"],
 input[type="time"],
 select{
@@ -65,7 +75,6 @@ select{
   width:100%!important;
   min-width:0!important;
   max-width:100%!important;
-  inline-size:100%!important;
   min-inline-size:0!important;
   max-inline-size:100%!important;
 }
@@ -75,33 +84,46 @@ select{
   white-space:nowrap;
 }
 
+/* Time controls are the main iPad failure mode. Flex + width:0 on the native
+   time input makes the input consume only the real remaining space while the
+   Now button keeps a stable touch target. */
 .time-row{
-  grid-template-columns:minmax(0,1fr) auto;
+  display:flex!important;
+  align-items:flex-end;
+  gap:6px;
+  width:100%;
+  min-width:0;
 }
+.time-row > input[type="time"],
 .time-row > input{
+  flex:1 1 0!important;
+  width:0!important;
   min-width:0!important;
+  max-width:100%!important;
 }
 .time-row > .now-btn{
-  flex:0 0 auto;
+  flex:0 0 auto!important;
+  min-width:64px;
+  white-space:nowrap;
 }
 
+/* Same pattern for the email + copy row. */
 .email-row{
-  grid-template-columns:minmax(0,1fr) auto;
+  display:flex!important;
+  align-items:flex-end;
+  gap:6px;
+  width:100%;
+}
+.email-row > input{
+  flex:1 1 0!important;
+  width:0!important;
+  min-width:0!important;
+}
+.email-row > .secondary{
+  flex:0 0 auto!important;
+  white-space:nowrap;
 }
 
-.module-grid,
-.export-grid,
-.display-choice,
-.segment{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-}
-
-.module,
-.modulecopy,
-.mode{
-  min-width:0;
-  max-width:100%;
-}
 .modulecopy small,
 .modulecopy b,
 .mode span,
@@ -109,7 +131,22 @@ select{
   overflow-wrap:anywhere;
 }
 
-/* Top bar: controls must remain horizontal and must never collapse into vertical CJK text. */
+/* The form responds to the actual card/modal width. This is what the previous
+   viewport media query could not do for the narrow right-hand iPad cards. */
+@container (max-width:560px){
+  .fields2{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@container (max-width:440px){
+  .module-grid,
+  .export-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
+/* Top bar remains horizontal and its Chinese labels never collapse vertically. */
 .topbar,
 .brand,
 .date-nav{
@@ -147,45 +184,12 @@ select{
   flex:0 1 150px!important;
 }
 
-/* Keep the two-column tablet layout, but give the content column permission to shrink. */
-.profile-grid{
-  grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);
-}
-.data-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-}
-
-/* iPad landscape: the left profile card is already dense. Stack its form pairs
-   before native controls can touch the neighbouring column. */
-@media (max-width:1180px){
-  .profile-grid{
-    grid-template-columns:minmax(0,1fr) minmax(300px,.76fr);
-  }
-  .profile-grid > .card.section .fields2{
-    grid-template-columns:1fr!important;
-  }
-}
-
-@media (max-width:960px){
-  .profile-grid,
-  .data-grid{
-    grid-template-columns:1fr;
-  }
-  .fields2{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-}
-
+/* Keep the existing page-level responsive structure; only compact the title
+   controls further when the whole viewport really becomes narrow. */
 @media (max-width:700px){
-  .topbar{
-    gap:8px;
-  }
-  .brand-copy small{
-    display:none;
-  }
-  .date-nav{
-    max-width:calc(100vw - 132px);
-  }
+  .topbar{gap:8px}
+  .brand-copy small{display:none}
+  .date-nav{max-width:calc(100vw - 132px)}
   .date-input{
     min-width:112px!important;
     max-width:34vw!important;
@@ -193,17 +197,8 @@ select{
 }
 
 @media (max-width:620px){
-  .fields2,
-  .module-grid,
-  .export-grid{
-    grid-template-columns:1fr;
-  }
-  .date-nav{
-    max-width:calc(100vw - 92px);
-  }
-  .date-nav .today-btn{
-    display:none!important;
-  }
+  .date-nav{max-width:calc(100vw - 92px)}
+  .date-nav .today-btn{display:none!important}
   .date-input{
     min-width:112px!important;
     max-width:42vw!important;
