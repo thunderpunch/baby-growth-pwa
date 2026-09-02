@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#d77fa2">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; media-src 'none'; font-src 'self';">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="宝宝记录">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>宝宝成长记录</title>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 4c.2-1 .8-1.7 1.9-2.1c-.1 1-.5 1.8-1.3 2.5" fill="none" stroke="#d77fa2" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M12 5.2c3.8 0 6.8 2.8 6.8 6.5c0 4-2.7 7.2-6.8 7.2S5.2 15.7 5.2 11.7C5.2 8 8.2 5.2 12 5.2Z" fill="#fff6fa" stroke="#e8ced9" stroke-width="1.1"/>
+          <circle cx="9.6" cy="11.1" r="1" fill="#8a80d8"/>
+          <circle cx="14.4" cy="11.1" r="1" fill="#8a80d8"/>
+          <path d="M10.1 13.8c1.1.8 2.7.8 3.8 0" fill="none" stroke="#d77fa2" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="7.6" cy="13" r="1" fill="#f3bfd3"/>
+          <circle cx="16.4" cy="13" r="1" fill="#f3bfd3"/>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <b>宝宝成长记录</b>
+        <small id="saveStatus">本地离线保存</small>
+      </div>
+    </div>
+
+    <div class="date-nav">
+      <button id="prevDay" class="icon-btn" aria-label="前一天">‹</button>
+      <input id="pageDate" class="date-input" type="date">
+      <button id="nextDay" class="icon-btn" aria-label="后一天">›</button>
+      <button id="todayBtn" class="today-btn">今天</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="todayView" class="view active">
+      <div class="hero">
+        <svg class="hero-ornament" viewBox="0 0 120 60" aria-hidden="true">
+          <path d="M76 12c-11 4-17 17-11 28c5 9 16 13 25 8c-7-.5-13-5-16-11c-4-9-1-17 2-25Z" fill="#eedcf1"/>
+          <path d="M23 21l2.1 4.3l4.4 2.1l-4.4 2.1l-2.1 4.3l-2.1-4.3L16.5 27l4.4-2.1Z" fill="#d77fa2"/>
+          <circle cx="43" cy="42" r="3" fill="#8a80d8"/>
+          <circle cx="100" cy="18" r="2.4" fill="#70a892"/>
+        </svg>
+        <div class="hero-head">
+          <div class="hero-copy">
+            <h1 id="dayRecordTitle">今天的记录</h1>
+            <p id="dayHint">新增、补录、修改都会保存在本机；没有确认的昨日模板不会计入统计。</p>
+          </div>
+          <span class="auto-pill">自动汇总</span>
+        </div>
+        <div id="metrics" class="metrics"></div>
+      </div>
+
+      <div class="quick-head">
+        <b>快速记录</b>
+        <small>首页只显示已开启的记录类型</small>
+      </div>
+      <div id="quickbar" class="quickbar"></div>
+
+      <div class="workspace">
+        <div class="card timeline-card">
+          <div class="timeline-head">
+            <div><b>当天流水</b> <small id="timelineSub"></small></div>
+            <small>待确认 ≠ 已记录</small>
+          </div>
+          <div id="pendingSummary" class="pending-summary hidden"></div>
+          <div id="timeline" class="timeline"></div>
+          <div class="demo-note">只有已确认记录会进入统计和导出分析；待确认模板仅用于减少重复录入。</div>
+        </div>
+
+        <div class="sidecol">
+          <div class="card pad">
+            <div class="card-head">
+              <div class="title-wrap">
+                <div class="ico pink">
+                  <svg viewBox="0 0 24 24"><path d="M20 12.5A7.5 7.5 0 1 1 11.5 4A6 6 0 0 0 20 12.5Z"/></svg>
+                </div>
+                <div>
+                  <div class="card-title">夜间睡眠</div>
+                  <div class="card-sub">填写事实，早醒由系统判断</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="fields2">
+              <label>前一晚真正睡着
+                <div class="time-row">
+                  <input id="nightSleepAt" type="time">
+                  <button class="now-btn" data-now-target="nightSleepAt">现在</button>
+                </div>
+              </label>
+              <label>当天最终起床
+                <div class="time-row">
+                  <input id="nightWakeAt" type="time">
+                  <button class="now-btn" data-now-target="nightWakeAt">现在</button>
+                </div>
+              </label>
+            </div>
+            <div class="hint">这里按“起床所在日期”归档；跨午夜的实际日期会在数据层自动换算。</div>
+          </div>
+
+          <div class="card pad">
+            <div class="context-compact">
+              <div class="context-copy">
+                <b>今天和平时不同？</b>
+                <small id="contextSummary">暂无例外记录</small>
+              </div>
+              <button id="contextToggle" class="context-toggle">＋ 标记</button>
+            </div>
+            <div id="contextPanel" class="context-panel">
+              <div id="contextTags" class="pills"></div>
+              <label class="context-note-label">备注
+                <textarea id="contextNote" placeholder="例如：今天外出明显比平时久；下午情绪烦躁；换到另一间房睡"></textarea>
+              </label>
+              <div id="contextSave" class="context-save">选择和备注会自动保存</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="historyView" class="view">
+      <div class="page-title">历史</div>
+      <div class="page-sub">可以连续补录纸质记录；保存后仍停留在当前日期，适合一次补多天。</div>
+
+      <div class="history-tools">
+        <div class="history-hero">
+          <b>连续补历史</b>
+          <p>选择起始日期后进入对应日期。首页的“保存并继续”会减少反复打开窗口的次数。</p>
+          <div class="btnrow">
+            <button id="backfillBtn" class="primary">开始批量补录</button>
+            <button id="historyTodayBtn" class="secondary">回到今天</button>
+          </div>
+        </div>
+        <div class="history-tip">
+          <b>不完整也可以</b>
+          <p>纸本没有的字段不要猜。时间有几分钟误差没关系，连续多天通常比单日追求绝对精确更有价值。</p>
+        </div>
+      </div>
+
+      <div id="historyGrid" class="history-grid"></div>
+    </section>
+
+    <section id="profileView" class="view">
+      <div class="page-title">档案</div>
+      <div class="page-sub">基础资料、成长阶段和记录设置分开管理。只有会改变一段时期分析背景的变化，才需要进入新阶段。</div>
+
+      <div class="profile-grid">
+        <div class="card section">
+          <h3>基础资料</h3>
+          <div class="sectiondesc">如果之前填错了，直接修正当前信息即可。</div>
+          <div class="fields2">
+            <label>出生日期<input id="birthDate" type="date"></label>
+            <label>性别
+              <select id="sex">
+                <option value="">请选择</option>
+                <option value="female">女宝宝</option>
+                <option value="male">男宝宝</option>
+              </select>
+            </label>
+          </div>
+
+          <h3 class="section-gap">成长阶段</h3>
+          <div class="sectiondesc">例如 3 觉稳定变 2 觉、辅食进入正餐、长期照护方式变化。</div>
+
+          <div class="segment">
+            <button class="active" data-profile-mode="weekday">平日</button>
+            <button data-profile-mode="weekend">周末</button>
+          </div>
+
+          <div id="weekdayProfile" class="profile-mode-pane">
+            <div class="fields2">
+              <label>通常放床<input id="weekdayBedtime" type="time"></label>
+              <label>入睡耗时<input id="weekdayLatency" type="text" placeholder="例如：约60分钟"></label>
+              <label>典型小睡<input id="weekdayNaps" type="text" placeholder="例如：3觉"></label>
+              <label>主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
+            </div>
+          </div>
+
+          <div id="weekendProfile" class="profile-mode-pane hidden">
+            <div class="fields2">
+              <label>通常放床<input id="weekendBedtime" type="time"></label>
+              <label>入睡耗时<input id="weekendLatency" type="text" placeholder="例如：约20分钟"></label>
+              <label>典型小睡<input id="weekendNaps" type="text" placeholder="例如：3觉"></label>
+              <label>主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
+            </div>
+          </div>
+
+          <div class="phase-box">
+            <label>当前饮食阶段</label>
+            <div id="dietStage" class="optionchips">
+              <button type="button" class="optionchip active" data-diet-stage="辅食">辅食阶段</button>
+              <button type="button" class="optionchip" data-diet-stage="正餐">正餐阶段</button>
+            </div>
+            <div class="hint">首页会直接显示“辅食”或“正餐”，不要求每次重新选主阶段。</div>
+          </div>
+
+          <label class="section-gap">当前主要问题
+            <textarea id="mainIssue" placeholder="例如：最近连续多天凌晨4点左右醒后很难重新入睡"></textarea>
+          </label>
+
+          <div class="btnrow profile-save-row">
+            <button id="correctProfileBtn" class="secondary">修正当前信息</button>
+            <button id="newStageBtn" class="primary">宝宝进入新阶段</button>
+          </div>
+
+          <div id="profileVersionInfo" class="settings-note"></div>
+        </div>
+
+        <div class="right-profile-column">
+          <div class="card section">
+            <h3>记录设置</h3>
+            <div class="sectiondesc">开启的项目直接显示在首页；关闭后仍可从“更多记录”临时使用。</div>
+            <div id="moduleGrid" class="module-grid"></div>
+            <div class="display-setting">
+              <label>显示大小</label>
+              <div class="display-choice">
+                <button class="active" data-display="standard">舒适</button>
+                <button data-display="large">大字</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card section">
+            <h3>成长测量</h3>
+            <div class="sectiondesc">体重、身高、头围按日期保存，不覆盖历史。</div>
+            <button class="secondary full-width" data-open="growth">添加一次测量</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="dataView" class="view">
+      <div class="page-title">数据</div>
+      <div class="page-sub">数据全部保存在本机。可导出 JSON 分享给你自己，也可从恢复 JSON 导入。</div>
+
+      <div class="data-grid">
+        <div class="card data-card">
+          <h3>导出</h3>
+          <p>JSON 包含选定日期范围内的记录、必要档案版本和删除标记，可重复提交并做幂等合并。</p>
+          <div class="fields2">
+            <label>开始日期<input id="exportStart" type="date"></label>
+            <label>结束日期<input id="exportEnd" type="date"></label>
+          </div>
+          <label class="data-email-label">接收邮箱
+            <div class="email-row">
+              <input id="recipientEmail" type="email" placeholder="可选，用于提醒自己发给哪个邮箱">
+              <button id="copyEmailBtn" class="secondary">复制</button>
+            </div>
+          </label>
+          <div class="export-grid">
+            <button id="shareBtn" class="mode">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m8 8l4-4l4 4"/><path d="M5 13v7h14v-7"/></svg>
+              <b>分享 / 邮件</b>
+              <span>在 iPad 调起系统分享面板，可选择“邮件”等应用。</span>
+            </button>
+            <button id="downloadBtn" class="mode">
+              <svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m8 11l4 4l4-4"/><path d="M5 19v1h14v-1"/></svg>
+              <b>保存到“文件”</b>
+              <span>生成 JSON 文件，保存到本地或 iCloud Drive。</span>
+            </button>
+          </div>
+          <div class="smallnote">浏览器/PWA 无法同时“自动附加本地文件 + 自动填收件人”。因此正式版使用 iPad 系统分享面板；接收邮箱可一键复制。</div>
+        </div>
+
+        <div class="card data-card">
+          <h3>导入 / 恢复</h3>
+          <p>支持导入本 PWA 导出的 JSON，或之后由 ChatGPT 根据历史主数据生成的恢复 JSON。</p>
+          <div class="filebox">
+            <b>选择 JSON 文件</b>
+            <p>先检查新增、相同和有差异的数据，再确认合并。</p>
+            <label class="filelabel" for="jsonInput">选择文件</label>
+            <input id="jsonInput" class="fileinput" type="file" accept=".json,application/json">
+          </div>
+          <div id="importPreview" class="import-preview hidden"></div>
+          <div class="btnrow import-actions">
+            <button id="applyImportBtn" class="primary" disabled>合并导入</button>
+            <button id="undoImportBtn" class="secondary">撤销最近一次导入</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav">
+    <button class="active" data-view="today">
+      <svg viewBox="0 0 24 24"><path d="M4 11l8-7l8 7"/><path d="M6 10v10h12V10"/></svg>
+      今天
+    </button>
+    <button data-view="history">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      历史
+    </button>
+    <button data-view="profile">
+      <svg class="nav-baby" viewBox="0 0 24 24">
+        <path d="M12 4c.2-.9.8-1.6 1.8-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="9" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M5.5 20c1-4.6 4-6.7 6.5-6.7s5.5 2.1 6.5 6.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      档案
+    </button>
+    <button data-view="data">
+      <svg viewBox="0 0 24 24"><path d="M7 7h10M14 4l3 3l-3 3M17 17H7M10 14l-3 3l3 3"/></svg>
+      数据
+    </button>
+  </nav>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modalcard">
+      <div class="modalhead">
+        <b id="modalTitle">添加记录</b>
+        <button id="modalClose" class="close" aria-label="关闭">×</button>
+      </div>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button id="modalCancel" class="secondary">取消</button>
+        <button id="modalSaveContinue" class="secondary">保存并继续</button>
+        <button id="modalSave" class="primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden">
+    <span id="toastText"></span>
+    <button id="toastAction" class="hidden"></button>
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
