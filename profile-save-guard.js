@@ -8,10 +8,20 @@ const PROFILE_FIELD_SELECTOR = [
 let profileDirty = false;
 let saveAckTimer = null;
 
+function normalizeProfileCopy(){
+  const saveBtn = document.getElementById("correctProfileBtn");
+  if(saveBtn) saveBtn.textContent = "保存当前档案";
+
+  const info = document.getElementById("profileVersionInfo");
+  if(info && info.innerHTML.includes("修正当前信息")){
+    info.innerHTML = info.innerHTML.replaceAll("修正当前信息","保存当前档案");
+  }
+}
+
 function ensureProfileSaveStatus(){
   const saveBtn = document.getElementById("correctProfileBtn");
   if(!saveBtn) return null;
-  saveBtn.textContent = "保存当前档案";
+  normalizeProfileCopy();
 
   let status = document.getElementById("profileSaveStatus");
   if(status) return status;
@@ -20,8 +30,6 @@ function ensureProfileSaveStatus(){
   status.id = "profileSaveStatus";
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
-  status.style.marginTop = "8px";
-  status.style.minHeight = "22px";
   status.style.fontSize = "13px";
   status.style.fontWeight = "800";
   status.style.color = "#7e7687";
@@ -55,7 +63,6 @@ function markProfileSaved(){
 }
 
 function markProfileSaving(){
-  if(!profileDirty) return;
   setProfileStatus("正在保存…");
   clearTimeout(saveAckTimer);
   saveAckTimer = setTimeout(()=>{
@@ -124,6 +131,12 @@ function bindProfileDirtyTracking(){
       }
     });
     observer.observe(toastText,{childList:true,subtree:true,characterData:true});
+  }
+
+  const info = document.getElementById("profileVersionInfo");
+  if(info){
+    const infoObserver = new MutationObserver(normalizeProfileCopy);
+    infoObserver.observe(info,{childList:true,subtree:true,characterData:true});
   }
 
   setProfileStatus("修改后请点“保存当前档案”");
