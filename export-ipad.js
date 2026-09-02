@@ -2,7 +2,8 @@ import "./profile-save-guard.js";
 
 const layoutFix=document.createElement("link");
 layoutFix.rel="stylesheet";
-layoutFix.href=new URL("./layout-fix.css",import.meta.url).href;
+layoutFix.href=new URL("./layout-fix.css?v=1.1.7",import.meta.url).href;
+layoutFix.dataset.tabletLayout="1.1.7";
 document.head.appendChild(layoutFix);
 
 function isIPadOS(){
