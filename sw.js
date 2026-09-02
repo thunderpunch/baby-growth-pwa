@@ -1,6 +1,6 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.2-topbar-fixed";
+const CACHE_NAME="baby-growth-pwa-v1.1.3-ipad-export";
 const APP_SHELL=[
-  "./","./index.html","./styles.css","./styles-base.css","./app.js","./db.js","./manifest.webmanifest",
+  "./","./index.html","./styles.css","./styles-base.css","./app.js","./export-ipad.js","./db.js","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
