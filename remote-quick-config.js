@@ -48,12 +48,22 @@ function applyQuickOrder(){
   if(!bar) return;
   const buttons=Array.from(bar.querySelectorAll(":scope > [data-quick]"));
   if(!buttons.length) return;
+
   const byId=new Map(buttons.map(button=>[button.dataset.quick,button]));
-  const expected=currentQuickRecords.filter(id=>byId.has(id));
+  const desired=currentQuickRecords.filter(id=>byId.has(id));
+  const extras=buttons
+    .map(button=>button.dataset.quick)
+    .filter(id=>id!=="more" && !desired.includes(id));
+  const expected=[...desired,...extras];
   if(byId.has("more")) expected.push("more");
+
   const actual=buttons.map(button=>button.dataset.quick);
-  if(expected.length!==actual.length || expected.some((id,index)=>id!==actual[index])){
-    expected.forEach(id=>bar.appendChild(byId.get(id)));
+  const alreadyOrdered=expected.length===actual.length && expected.every((id,index)=>id===actual[index]);
+  if(alreadyOrdered) return;
+
+  for(const id of expected){
+    const button=byId.get(id);
+    if(button) bar.appendChild(button);
   }
 }
 
