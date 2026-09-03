@@ -1,2 +1,9 @@
 .baby-name-field{display:block;margin-top:14px;margin-bottom:10px}
 .baby-name-field input{margin-top:5px}
+.profile-context-block{margin-top:18px;margin-bottom:16px;padding:14px 16px;border:1px solid rgba(120,104,132,.14);border-radius:16px;background:rgba(255,255,255,.52)}
+.profile-context-title{font-weight:850;font-size:16px;margin-bottom:4px}
+.profile-context-fields{margin-top:10px}
+.profile-context-fields label{min-width:0}
+.profile-context-fields input{margin-top:5px;width:100%;min-width:0}
+.profile-context-fields label:last-child{grid-column:1/-1}
+@media(max-width:760px){.profile-context-fields label:last-child{grid-column:auto}}
