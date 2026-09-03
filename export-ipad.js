@@ -35,7 +35,6 @@ try{
     import("./baby-name.js"),
     import("./time-behavior.js"),
     import("./date-picker.js"),
-    import("./recent-milk-template.js"),
     import("./update-coordinator.js"),
     import("./gesture-guard.js"),
     import("./remote-quick-config.js"),
