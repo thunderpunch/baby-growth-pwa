@@ -27,9 +27,13 @@ const ids=[...index.matchAll(/\bid=["']([^"']+)["']/g)].map(m=>m[1]);
 const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];
 assert.deepEqual(duplicates,[],`index.html contains duplicate ids: ${duplicates.join(", ")}`);
 
-for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","contextSummary","modal","toast"]){
+for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","lastNightSummary","contextSummary","modal","toast"]){
   assert.ok(ids.includes(id),`missing required DOM mount #${id}`);
 }
+assert.match(index,/data-night-morning/,"Morning action must exist in the static Today DOM");
+assert.match(index,/data-night-goodnight/,"Goodnight action must exist in the static Today DOM");
+assert.ok(index.indexOf("data-night-morning")<index.indexOf('id="lastNightSummary"'),"Morning action must stay above last-night summary");
+assert.ok(index.indexOf('id="lastNightSummary"')<index.indexOf("data-night-goodnight"),"Last-night summary must stay above Goodnight action");
 assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html must load app.js as module");
 assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"index.html must load export-ipad.js as module");
 
@@ -43,9 +47,10 @@ const readyAt=entry.indexOf('classList.add("app-ready")');
 const firstAwait=entry.indexOf("await ");
 assert.ok(readyAt>=0&&(firstAwait<0||readyAt<firstAwait),"app-ready must happen before the first await");
 
-for(const moduleName of ["migration-v3.js","sleep-v3.js","sleep-ui-bridge.js","timeline-v3.js","data-io-v3.js"]){
+for(const moduleName of ["migration-v3.js","sleep-v3.js","timeline-v3.js","data-io-v3.js"]){
   assert.ok(entry.includes(`./${moduleName}`),`export-ipad.js missing boot module ${moduleName}`);
 }
+assert.doesNotMatch(entry,/sleep-ui-bridge\.js/,"runtime DOM bridge must not return to the boot chain");
 
 // Every relative ESM import in repository JavaScript must resolve to a real local file.
 const files=await walk(root);
@@ -77,5 +82,6 @@ for(const item of shellEntries){
   try{ok=(await stat(path.join(root,local))).isFile();}catch{}
   assert.ok(ok,`sw.js APP_SHELL references missing file ${item}`);
 }
+assert.ok(!shellEntries.some(item=>item.includes("sleep-ui-bridge.js")),"Service Worker must not cache removed sleep bridge");
 
 console.log("app structure contract tests passed");
