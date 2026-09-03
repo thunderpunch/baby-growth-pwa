@@ -3,103 +3,146 @@
 ## 目标
 
 - 录入层保持简单，数据事实保持完整。
-- 所有记录使用同一套时间事实模型，不再由每个 UI 模块自行解释时间。
-- `date` 只承担 IndexedDB 的“页面/业务归档桶”索引职责；排序、区间计算、重叠判断使用 canonical temporal 数据。
-- 迁移与用户编辑分离：结构迁移不得修改 `updatedAt`。
-- 可见页面结构尽量由初始 DOM 或单一页面控制器直接表达，不靠兼容层反复搬运形成最终布局。
+- 所有记录使用统一 canonical temporal；UI 不自行发明第二套时间事实。
+- `date` 主要承担 IndexedDB 页面/业务归档桶职责；排序、区间、时长、重叠判断优先使用 canonical temporal。
+- 可见页面结构尽量由初始 DOM 或单一 controller 直接表达，不靠运行时 bridge、hidden legacy mount 或重复 handler 形成最终布局。
+- local-first 数据安全优先于 PWA 安装便利和视觉更新。
 
 ## 模块边界
 
 ### `record-model.js`
-唯一的记录时间模型。
 
-所有记录写入后都包含：
+唯一时间事实模型。
 
 ```js
 temporal: {
   version: 1,
-  zone: "Asia/Singapore", // 示例，实际取设备 IANA timezone
-  occurred: { atMs, date, time, offsetMinutes }, // 单点事件
-  start:    { atMs, date, time, offsetMinutes }, // 睡眠
+  zone: "Asia/Singapore", // 示例；实际取设备 IANA timezone
+  occurred: { atMs, date, time, offsetMinutes },
+  start:    { atMs, date, time, offsetMinutes },
   end:      { atMs, date, time, offsetMinutes },
-  wake:     { atMs, date, time, offsetMinutes }, // 夜醒
+  wake:     { atMs, date, time, offsetMinutes },
   resleep:  { atMs, date, time, offsetMinutes }
 }
 ```
 
-不同记录只使用与自己有关的节点。
+不同类型只使用相关节点。
 
-`createdAt / updatedAt` 是记录元数据时间，不是事件发生时间。
+`createdAt / updatedAt` 是元数据时间，不是事件发生时间。
+
+`canonicalRecordForExport()` 会删除可从 temporal 推导的旧时间投影。
 
 ### `db.js`
-持久化边界。
 
-所有 `putRecord()` 在写入 IndexedDB 前调用 `canonicalizeRecord()`。因此普通录入、睡眠、模板、导入都不再各自决定数据结构。
+持久化规范化边界。
 
-IndexedDB `DB_VERSION` 仍为 1；当前没有新增 object store/index。
+所有 `putRecord()` 在写入 IndexedDB 前调用 `canonicalizeRecord()`；普通录入、睡眠、模板、导入都不能各自决定时间结构。
 
-### `migration-v3.js`
-内容数据版本：`dataVersion = 3`。
+IndexedDB 当前 `DB_VERSION = 1`，仍使用既有 `date` index。
 
-- 先完成 v2 睡眠迁移。
-- 再为所有历史记录补齐 canonical temporal。
-- 完成全部记录后才写入 `dataVersion = 3`。
-- 不修改业务记录的 `updatedAt`。
+### `migration-v2.js` / `migration-v3.js`
 
-`migration-v2.js` 仍是历史安装升级链的一部分，不能仅因为名字旧而删除。
+历史安装升级链。
+
+- v2 迁移仍是旧安装进入当前数据结构所需步骤，不能仅因为文件名旧而删除。
+- v3 最终写入 `dataVersion = 3`。
+- 迁移与用户编辑分离；结构迁移不得为了“刷新”数据而修改业务 `updatedAt`。
+
+### `app.js`
+
+当前核心 Today / Profile / Context / 通用非 Sleep 记录 controller。
+
+已经从 `app.js` 物理删除：
+
+- 旧 History 全库扫描与渲染；
+- 批量补录；
+- 旧 v1 JSON 导入导出；
+- 旧普通 Sleep 弹窗；
+- `day.nightSleep` 写入；
+- 重复 Service Worker 注册。
+
+后续仍按职责继续拆分，不把已外移能力重新吸回。
 
 ### `sleep-v3.js`
-睡眠业务与录入 UI：普通睡眠、晚安、早安、夜醒关联、昨夜摘要。
 
-可见的“早安 → 昨晚小结 → 晚安”结构已经直接存在于 `index.html`，不再由 bridge 在运行时移动 DOM。
+Sleep 唯一业务 owner：
 
-它仍保留 `startDateTime/endDateTime` 等兼容投影供当前 UI 使用，但这些字段已经不是最终时间事实来源。
+- 普通 sleep；
+- Good Night；
+- Good Morning；
+- Wake “属于昨晚 / 属于今晚”关联；
+- 昨夜摘要；
+- 小睡/夜间/待判断 projection。
+
+首页可见结构直接存在于 `index.html`：
+
+`早安 → #lastNightSummary → 晚安 → 当天例外`
+
+`sleep-v3.js` 直接渲染 `#lastNightSummary`；旧 `nightSleepAt / nightWakeAt / nightSleepEntries` 隐藏挂载已经删除，也不再存在 `ensureNightCard()` DOM 兼容逻辑。
 
 ### `timeline-v3.js`
+
 当天流水 projection。
 
-- 统一通过 `recordTimelineMs()` 排序。
-- 普通睡眠按开始时间。
-- 夜间主睡按最终早安时间进入“早安所在日”的流水。
-- 夜醒按真实夜醒时间。
-- 一次按日 IndexedDB 查询处理当前流水，不再逐行读取记录。
+- 统一通过 `recordTimelineMs()` 排序；
+- 普通 sleep 按开始时间；
+- 夜间主睡按最终早安时间进入早安所在日；
+- wake 按真实夜醒时间；
+- 每次按日 IndexedDB 查询，不逐行 `getRecord()`。
 
 ### `history.js`
-长期历史浏览控制器。
 
-- 以 `YYYY-MM` 作为浏览单位，年份始终显式存在于导航语义中。
-- 上月 / 下月跨年由同一套月份运算处理，例如 `2026-12 → 2027-01`。
-- 每次只通过 `getRecordsInRange()` / `getDaysInRange()` 读取可见月份，不扫描整个历史库。
-- 不再限制“最近 30 个有记录日期”；多年数据仍可按月定位。
-- 日期跳转复用 Today 页已有的 `pageDate` 入口，不复制当天加载逻辑。
-- `tests/history.test.mjs` 覆盖跨年、闰年与范围查询回归。
+History 唯一控制器。
 
-当前旧 `app.js::renderHistory()` 已不再作为导航入口使用，应视为待删除死代码；禁止继续向其中增加功能。物理删除将在 `app.js` 拆分时完成。
+当前浏览模式：
+
+- 默认最近 30 个连续自然日；
+- 可切换按月；
+- 上下月自然跨年；
+- 当前年份文案省略年份，非当前年份明确显示；
+- 每次只通过 `getRecordsInRange()` / `getDaysInRange()` 读取当前范围；
+- 不进行 lifetime `getAllRecords()/getAllDays()`；
+- 不再提供重复的“跳到日期”控件；具体日期仍通过历史卡进入 Today，并复用全局 `pageDate`；
+- 已删除无实质能力的“批量补录”入口。
 
 ### `data-io-v3.js`
-统一数据 I/O：
+
+JSON / Excel I/O 唯一实现。
+
+当前：
 
 - JSON schema `1.2.0`
 - `dataVersion = 3`
-- JSON 只输出 canonical temporal，不输出可推导的旧时间字段。
-- Excel 由 canonical temporal 生成。
-- 导入经过 `putRecord()` 再次规范化。
-- 不阻塞 Today 首屏，空闲时加载或进入数据页时按需加载。
+- `timeModelVersion = 1`
+- JSON 只输出 canonical temporal，不输出可推导旧时间字段
+- Excel 从 canonical temporal 生成
+- 导入最终经过 `putRecord()` 再次规范化
+- 正常 Today 首屏不等待 Data I/O 模块
+
+对外 JSON 协议只以 `JSON_DATA_SCHEMA.md` 为权威文档；不要再维护第二份重复协议说明。
 
 ### `export-ipad.js`
-当前 feature boot / hydration 协调入口。
 
-- 默认静态 UI 允许先显示；
-- 独立 feature 模块并行加载；
-- History 控制器在启动阶段注册，但只有进入 History 时才查询月数据；
-- migration 完成后再启动依赖 canonical 数据的 sleep/timeline projection；
-- 不再加载 `sleep-ui-bridge.js`。
+feature boot / hydration 协调入口。
 
-## `date` 与真实时间的区别
+- 静态 UI 先显示；
+- feature 模块并行加载；
+- migration 完成后再启动依赖 canonical 数据的 Sleep / Timeline projection；
+- History controller 启动时注册，但只有进入 History 后查询范围数据；
+- Data I/O 空闲加载或进入 Data 页时加载；
+- 不存在 sleep DOM bridge。
 
-`date` 目前保留是因为 IndexedDB 已有 `date` index，并且页面按日读取。
+### `update-coordinator.js`
 
-它表示“这条记录属于哪个页面/业务日”，不代表唯一真实发生时间。
+Service Worker 注册和版本切换唯一 owner。
+
+`app.js` 不允许再次注册 Service Worker。
+
+在线时页面/代码资源优先网络新鲜度，离线回退缓存；稳定图标等资源可 cache-first。
+
+## `date` 与真实时间
+
+`date` 保留用于 IndexedDB date index 和业务日归档。
 
 例如：
 
@@ -108,31 +151,34 @@ IndexedDB `DB_VERSION` 仍为 1；当前没有新增 object store/index。
 9/3 05:35 早安
 ```
 
-夜间睡眠：
+夜间主睡：
 
 ```js
 date: "2026-09-03"
 nightKey: "2026-09-03"
-temporal.start.atMs // 9/2 19:42 的真实时间点
-temporal.end.atMs   // 9/3 05:35 的真实时间点
+temporal.start.atMs // 9/2 19:42
+temporal.end.atMs   // 9/3 05:35
 ```
 
-当天流水使用 `temporal.end.atMs`，因此显示在 05:35，而不是页面最后或 19:42。
+流水使用真实 temporal，所以显示在 05:35，而不是按照记录创建时间或数组位置。
 
 ## 兼容字段策略
 
-当前 `app.js` 仍使用 `time/startTime/endTime/wakeTime` 等字段，因此 `db.putRecord()` 会从 canonical temporal 生成这些兼容投影。
+IndexedDB 中暂时仍可能存在 `time/startTime/endTime/startDateTime/endDateTime/wakeTime/resleepTime` 等兼容投影，用于当前 UI 与旧数据升级。
 
-JSON 1.2.0 不再输出这些重复字段。
+这些字段由 `db.putRecord()` / `canonicalizeRecord()` 从 temporal 推导，不是权威事实。
 
-当前 `index.html` 仍保留隐藏的 `nightSleepAt / nightWakeAt / nightSleepEntries` 挂载点，只为了兼容尚未拆完的旧 sleep 路由；它们不参与可见布局。
+JSON 1.2 不输出这些重复字段。
 
-下一阶段可删除：
+后续删除兼容投影的前提是所有运行模块都已经只读取 canonical temporal，并且历史安装迁移路径有回归覆盖。
 
-- `app.js` 内旧 sleep modal 分支
-- `app.js` 内旧 `renderHistory()` 死代码
-- `day.nightSleep` 相关死代码
-- legacy 时间字段读取
-- 隐藏 legacy sleep 挂载点
+## 文档边界
 
-随后可把 `app.js` 剩余职责继续拆为：`today-controller / record-dialogs / profile / context / app-shell`，而无需再次改变数据模型。
+- `AGENTS.md`：项目原则、用户长期偏好、开发门禁。
+- `ARCHITECTURE.md`：本文件，当前代码/模块结构。
+- `JSON_DATA_SCHEMA.md`：JSON 协议唯一权威说明。
+- `MAINTENANCE.md`：清理计划、技术债、Git 历史策略。
+- `TESTING.md`：发布前验证策略。
+- `SECURITY.md`：local-first 与 Web 安全边界。
+
+任何架构或协议改动都必须同步更新对应权威文档，避免聊天记忆成为唯一信息源。
