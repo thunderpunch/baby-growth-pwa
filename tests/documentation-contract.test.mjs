@@ -17,7 +17,8 @@ for(const name of ["ARCHITECTURE.md","JSON_DATA_SCHEMA.md","MAINTENANCE.md","TES
 
 assert.match(agents,/代码收敛|洁癖/,"AGENTS.md must preserve the code-convergence requirement");
 assert.match(agents,/static-check[\s\S]*Pages[\s\S]*completed \/ success/,"AGENTS.md must preserve the release gate");
-assert.match(agents,/按自然年[\s\S]*完整 JSON/,"AGENTS.md must preserve yearly full-snapshot backup policy");
+assert.match(agents,/按自然年|自然年分档/,"AGENTS.md must preserve natural-year backup partitioning");
+assert.match(agents,/完整 JSON 快照|年度完整 JSON/,"AGENTS.md must preserve full-snapshot JSON backup policy");
 assert.match(agents,/聊天记忆不是唯一事实源/,"AGENTS.md must require repository documentation as durable context");
 
 const runtimeSchema=dataIo.match(/const\s+SCHEMA_VERSION\s*=\s*["']([^"']+)["']/)?.[1];
