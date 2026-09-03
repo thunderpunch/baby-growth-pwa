@@ -45,12 +45,11 @@ try{
   // Migration is the only data dependency before the v3 projections hydrate existing records.
   await runDataMigrationV3();
 
-  // Sleep and timeline are both needed by Today and can initialize concurrently.
+  // The Today DOM already contains the final sleep-action layout, so no runtime DOM bridge is needed.
   await Promise.all([
     import("./sleep-v3.js"),
     import("./timeline-v3.js")
   ]);
-  await import("./sleep-ui-bridge.js");
 
   // Data import/export is not part of Today first paint. Load it when the browser is idle,
   // but force it immediately if the user opens the Data tab first.
