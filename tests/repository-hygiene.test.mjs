@@ -14,6 +14,7 @@ const forbidden=[
   "sleep-v2.css",
   "sleep-method.js",
   "sleep-ui-bridge.js",
+  "recent-milk-template.js",
   "icons/baby-neutral.svg",
   "DATA_PROTOCOL.md"
 ];
