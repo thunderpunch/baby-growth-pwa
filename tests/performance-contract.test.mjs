@@ -5,8 +5,8 @@ import {fileURLToPath} from "node:url";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=name=>readFile(path.join(root,name),"utf8");
-const [boot,sw,updater,sleep,timeline]=await Promise.all([
-  read("export-ipad.js"),read("sw.js"),read("update-coordinator.js"),read("sleep-v3.js"),read("timeline-v3.js")
+const [boot,sw,updater,sleep,timeline,datePicker]=await Promise.all([
+  read("export-ipad.js"),read("sw.js"),read("update-coordinator.js"),read("sleep-v3.js"),read("timeline-v3.js"),read("date-picker.js")
 ]);
 
 // Boot helpers are independent and must not drift back to a long serial import waterfall.
@@ -19,6 +19,13 @@ for(const css of ["layout-fix.css","sleep-v3.css","icon-theme.css","baby-name.cs
 // Data import/export is below-the-fold functionality and must not block Today hydration.
 assert.match(boot,/requestIdleCallback[\s\S]*loadDataIo/,"data IO should be scheduled during browser idle time");
 assert.doesNotMatch(boot,/await\s+import\(["']\.\/data-io-v3\.js["']\)/,"data IO must not block first-screen boot");
+
+// Custom date hydration must not create a MutationObserver feedback loop. Rewriting trigger text
+// from inside a broad childList observer can starve the main thread and make the rendered app untappable.
+assert.match(datePicker,/if\(trigger\.textContent!==text\)trigger\.textContent=text/,"date trigger sync must avoid no-op DOM writes");
+const observerBody=datePicker.match(/const\s+observer=new\s+MutationObserver\(mutations=>\{([\s\S]*?)\n\s*\}\);\n\s*observer\.observe/)?.[1]||"";
+assert.ok(observerBody,"date picker MutationObserver body not found");
+assert.doesNotMatch(observerBody,/\bsyncAll\s*\(/,"date MutationObserver must not rescan and rewrite the whole date UI from its own mutations");
 
 // Mutable application code must revalidate online so a deployment does not depend on a manual
 // CACHE_NAME bump. Cache Storage remains the offline fallback; stable assets stay cache-first.
