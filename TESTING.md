@@ -55,6 +55,29 @@ node --experimental-default-type=module tests/app-contract.test.mjs
 
 特别说明：`cache.addAll()` 只要有一个文件不存在，整个 Service Worker install 就可能失败，所以 APP_SHELL 是发布契约，不是普通列表。
 
+### Page-load Performance Contract
+
+执行：
+
+```bash
+node --experimental-default-type=module tests/performance-contract.test.mjs
+```
+
+当前覆盖：
+
+- 独立启动模块必须使用并行加载，禁止重新退化成长串 `await import()` waterfall；
+- 首页会用到的 feature CSS 要尽早发起请求，避免模块运行后才发现样式文件造成额外重排；
+- `data-io-v3.js` 属于非首屏能力，不允许阻塞“今天”页面 hydration；
+- 当前 Service Worker 版本拥有的 JS/CSS/图标等静态资源必须 cache-first，不能每次刷新都为每个资源付一次网络 RTT；
+- `home-config.json` 继续 network-first，因为它是远程控制配置；
+- 睡眠首页分析禁止正常运行时 `getAllRecords()` 全库扫描；
+- 睡眠模块禁止用 `setInterval()` 轮询日期变化；
+- 一次睡眠 refresh 只允许计算一次当天 analysis；
+- 流水 projection 使用一次按日 IndexedDB 查询，不允许每一行单独 `getRecord()`；
+- 流水 observer 只监听顶层行变化，不能被自己修改行内文字再次触发。
+
+这些测试的目标不是追求某个机器上的固定毫秒数，而是防止已经确认的**结构性性能退化**。
+
 ### Temporal Model Regression
 
 执行：
@@ -113,7 +136,7 @@ node scripts/verify.mjs
 
 ### 修改启动流程 / 模块拆分
 
-更新 `tests/app-contract.test.mjs`。
+同时检查 `tests/app-contract.test.mjs` 和 `tests/performance-contract.test.mjs`。
 
 重点检查：
 
@@ -123,13 +146,23 @@ node scripts/verify.mjs
 - 是否产生重复 DOM ID；
 - 是否新增运行时 DOM 搬运/重复初始化；
 - 是否出现 `默认内容 → 空白 → 实际内容`；
-- 默认内容可以先显示，异步数据应在原位置渐进更新，不允许靠隐藏整页等待初始化完成。
+- 默认内容可以先显示，异步数据应在原位置渐进更新，不允许靠隐藏整页等待初始化完成；
+- 是否把可并行的模块改回串行；
+- 是否把非首屏大模块放回关键启动路径；
+- 是否重新引入全库扫描、定时轮询或每行单独 IndexedDB 查询。
 
 ### 修改 Service Worker / 新增删除资源文件
 
 必须运行一键验证，确保 `APP_SHELL` 不含不存在的文件。
 
 更新缓存版本后再发布。
+
+正常策略：
+
+- 页面导航：network-first；
+- `home-config.json`：network-first；
+- 当前 SW 版本拥有的静态 app shell：cache-first；
+- 新版本由 `update-coordinator.js` 检查、激活后刷新一次。
 
 ### 修改 JSON / Excel / 数据结构
 
@@ -146,13 +179,14 @@ node scripts/verify.mjs
 自动测试通过后，涉及首页交互时仍建议在真实浏览器做一次最小检查：
 
 1. 刷新首页一次：允许先看到默认内容，然后原位变成实际数据；**期间不能出现整页空白，也不能自动再次刷新**；
-2. 普通睡眠：弹窗只出现睡着、醒来、入睡方式、备注；
-3. 晚安：只记录今晚入睡；
-4. 早安：能带出昨晚晚安，并形成完整夜间睡眠；
-5. 流水：昨夜睡眠按最终醒来时间排序；
-6. 夜醒：昨晚/今晚归属能正确保存；
-7. 切换前一天/后一天后，摘要与流水同步更新；
-8. PWA 刷新过程中不应出现 `默认 → 空白 → 实际`，也不应层层重排可见结构。
+2. 重复刷新一次：在已安装 Service Worker 的情况下，页面骨架和交互模块应明显更快出现，不应等待一串 JS/CSS 网络请求；
+3. 普通睡眠：弹窗只出现睡着、醒来、入睡方式、备注；
+4. 晚安：只记录今晚入睡；
+5. 早安：能带出昨晚晚安，并形成完整夜间睡眠；
+6. 流水：昨夜睡眠按最终醒来时间排序；
+7. 夜醒：昨晚/今晚归属能正确保存；
+8. 切换前一天/后一天后，摘要与流水同步更新；
+9. PWA 刷新过程中不应出现 `默认 → 空白 → 实际`，也不应层层重排可见结构。
 
 人工 smoke 主要验证浏览器 DOM、视觉和真实 IndexedDB 联动，不能替代数据单测；数据单测也不能完全替代浏览器 smoke。
 
@@ -177,5 +211,8 @@ node scripts/verify.mjs
 - `默认内容 → 空白 → 实际内容`；
 - migration 后再次 reload；
 - Service Worker 缓存引用旧文件；
+- 可并行模块被串行加载；
+- 首页分析退化为全库扫描；
+- 流水退化为逐行 IndexedDB 查询；
 
 后续如果可以用纯逻辑/结构契约描述，都应逐步加入自动验证，而不是只留在对话记忆里。
