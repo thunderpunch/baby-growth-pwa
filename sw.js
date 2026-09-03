@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.2-progressive-boot";
+const CACHE_NAME="baby-growth-pwa-v1.3.3-fast-boot";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
@@ -59,7 +59,7 @@ async function cacheFirst(request){
   const cached=await caches.match(request);
   if(cached) return cached;
   const response=await fetch(request);
-  await putInCurrentCache(request,response.clone());
+  await putInCurrentCache(request,response);
   return response;
 }
 
@@ -68,12 +68,13 @@ self.addEventListener("fetch",event=>{
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin) return;
 
-  const destination=event.request.destination;
+  // Navigation stays network-first so the HTML shell can discover a new deployment quickly.
+  // home-config.json is intentionally remote-controlled and must also prefer the network.
+  const navigation=event.request.mode==="navigate";
   const remoteConfig=url.pathname.endsWith("/home-config.json");
-  const themedBabyIcon=/\/icons\/baby-(?:neutral-approved|girl-approved|boy-approved)\.svg$/i.test(url.pathname);
-  const codeOrPage = event.request.mode==="navigate" ||
-    ["script","style","worker","manifest"].includes(destination) ||
-    /\.(?:html|js|css|webmanifest)$/i.test(url.pathname);
 
-  event.respondWith(remoteConfig || themedBabyIcon || codeOrPage ? networkFirst(event.request) : cacheFirst(event.request));
+  // All version-owned scripts, styles, manifests and icons are pre-cached during SW install.
+  // Serving them cache-first removes a network round trip from normal PWA refreshes. A new
+  // deployment installs a new CACHE_NAME, and update-coordinator activates it then reloads once.
+  event.respondWith(navigation || remoteConfig ? networkFirst(event.request) : cacheFirst(event.request));
 });
