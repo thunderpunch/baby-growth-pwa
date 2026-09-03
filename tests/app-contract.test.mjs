@@ -27,11 +27,11 @@ const ids=[...index.matchAll(/\bid=["']([^"']+)["']/g)].map(m=>m[1]);
 const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];
 assert.deepEqual(duplicates,[],`index.html contains duplicate ids: ${duplicates.join(", ")}`);
 
-for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","lastNightSummary","contextSummary","modal","toast"]){
+for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","nightSleepEntries","lastNightSummary","contextSummary","modal","toast"]){
   assert.ok(ids.includes(id),`missing required DOM mount #${id}`);
 }
-assert.match(index,/data-night-morning/,"Morning action must exist in the static Today DOM");
-assert.match(index,/data-night-goodnight/,"Goodnight action must exist in the static Today DOM");
+assert.equal((index.match(/data-night-morning/g)||[]).length,1,"Exactly one static Morning action is allowed");
+assert.equal((index.match(/data-night-goodnight/g)||[]).length,1,"Exactly one static Goodnight action is allowed");
 assert.ok(index.indexOf("data-night-morning")<index.indexOf('id="lastNightSummary"'),"Morning action must stay above last-night summary");
 assert.ok(index.indexOf('id="lastNightSummary"')<index.indexOf("data-night-goodnight"),"Last-night summary must stay above Goodnight action");
 assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html must load app.js as module");
