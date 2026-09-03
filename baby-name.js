@@ -7,6 +7,15 @@ let currentSavedName="";
 let toastObserver=null;
 let titleObserver=null;
 
+function ensureStyles(){
+  if(document.querySelector('link[data-baby-name-style]')) return;
+  const link=document.createElement("link");
+  link.rel="stylesheet";
+  link.href=new URL("./baby-name.css",import.meta.url).href;
+  link.dataset.babyNameStyle="1";
+  document.head.appendChild(link);
+}
+
 function safeName(value){
   return String(value||"").trim().slice(0,MAX_NAME_LENGTH);
 }
@@ -146,6 +155,7 @@ function bindNavigationRefresh(){
 }
 
 async function initBabyName(){
+  ensureStyles();
   ensureNameField();
   bindToastObserver();
   bindTitleObserver();
