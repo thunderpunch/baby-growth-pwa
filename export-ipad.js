@@ -4,6 +4,8 @@ import "./time-behavior.js";
 import "./recent-milk-template.js";
 import "./update-coordinator.js";
 import "./gesture-guard.js";
+import "./remote-quick-config.js";
+import "./sleep-method.js";
 
 const layoutFix=document.createElement("link");
 layoutFix.rel="stylesheet";
