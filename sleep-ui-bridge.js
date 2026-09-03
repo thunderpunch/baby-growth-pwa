@@ -65,14 +65,12 @@ async function decorateTimeline(){
   const timeline=$("timeline");
   if(!timeline)return;
   const edits=Array.from(timeline.querySelectorAll("[data-edit-id]"));
-  const resolved=[];
   await Promise.all(edits.map(async edit=>{
     const row=edit.closest(".row"),main=row?.querySelector(".rowmain"),sub=row?.querySelector(".rowsub"),time=row?.querySelector(".time");
     if(!row||!main||!sub)return;
     const record=await getRecord(edit.dataset.editId);if(!record)return;
     const orderTime=eventTime(record);
     row.dataset.timelineEventTime=orderTime;
-    resolved.push({row,orderTime});
     if(record.type==="sleep"){
       edit.dataset.sleepV3Record="sleep";
       const start=timePart(record.startDateTime)||record.startTime||"";
@@ -88,12 +86,13 @@ async function decorateTimeline(){
     }
   }));
 
-  // app.js still sorts with legacy time fields. Reorder only the rendered rows here so
-  // new datetime-based records follow the same chronological semantics as all other rows.
-  const rows=Array.from(timeline.children).filter(node=>node.classList?.contains("row"));
-  rows.sort((a,b)=>(a.dataset.timelineEventTime||a.querySelector(".time")?.textContent||"99:99")
+  // app.js still sorts with legacy time fields. Reorder only when chronological order
+  // actually differs, so the observer stays idempotent and does not trigger itself forever.
+  const currentRows=Array.from(timeline.children).filter(node=>node.classList?.contains("row"));
+  const sortedRows=[...currentRows].sort((a,b)=>(a.dataset.timelineEventTime||a.querySelector(".time")?.textContent||"99:99")
     .localeCompare(b.dataset.timelineEventTime||b.querySelector(".time")?.textContent||"99:99"));
-  for(const row of rows)timeline.appendChild(row);
+  const changed=sortedRows.some((row,index)=>row!==currentRows[index]);
+  if(changed)for(const row of sortedRows)timeline.appendChild(row);
 }
 function scheduleDecorate(delay=30){
   clearTimeout(decorateTimer);
