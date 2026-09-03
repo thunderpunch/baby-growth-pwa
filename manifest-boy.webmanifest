@@ -10,10 +10,10 @@
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "./icons/baby-boy.svg",
+      "src": "./icons/baby-boy-approved.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
