@@ -20,6 +20,14 @@ export function recentDateKeys(dateKey,days=MILK_LOOKBACK_DAYS){
 function confirmedOfType(records,type){
   return records.filter(record=>!record.deleted&&record.status==="confirmed"&&record.type===type);
 }
+function unresolvedPendingOfType(records,type){
+  return records.filter(record=>!record.deleted&&record.status==="pending"&&record.type===type);
+}
+export function settledConfirmedOfType(records,type){
+  const confirmed=confirmedOfType(records,type);
+  if(!confirmed.length||unresolvedPendingOfType(records,type).length)return [];
+  return confirmed;
+}
 function isTemplate(record,type){
   return record?.type===type&&record?.status==="pending"&&(
     record.source==="recent_milk_template"||record.source==="previous_day_template"||record.templateSourceId
@@ -36,10 +44,11 @@ async function markGenerated(day,type,sourceDate,nowISO){
   day.updatedAt=nowISO();
   await putDay(day);
 }
-async function findNearestConfirmed(dateKey,type,maxDays){
+async function findNearestSettledConfirmed(dateKey,type,maxDays){
   for(const sourceDate of recentDateKeys(dateKey,maxDays)){
-    const records=confirmedOfType(await getRecordsByDate(sourceDate,{includeDeleted:false}),type);
-    if(records.length)return {sourceDate,records};
+    const records=await getRecordsByDate(sourceDate,{includeDeleted:true});
+    const confirmed=settledConfirmedOfType(records,type);
+    if(confirmed.length)return {sourceDate,records:confirmed};
   }
   return null;
 }
@@ -55,7 +64,7 @@ async function ensureMilkTemplates({date,day,nowISO}){
     await markGenerated(day,"milk",sourceDate,nowISO);
     return;
   }
-  const source=await findNearestConfirmed(date,"milk",MILK_LOOKBACK_DAYS);
+  const source=await findNearestSettledConfirmed(date,"milk",MILK_LOOKBACK_DAYS);
   if(!source)return;
   for(const record of source.records){
     const id=`tpl:${date}:${record.id}`;
