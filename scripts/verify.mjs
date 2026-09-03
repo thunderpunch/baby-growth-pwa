@@ -29,7 +29,7 @@ function runTest(label,file){
   process.stdout.write(result.stdout);
 }
 
-console.log("[1/5] JavaScript syntax");
+console.log("[1/6] JavaScript syntax");
 const files=await walk(root);
 for(const file of files.filter(f=>f.endsWith(".js"))){
   const source=await readFile(file,"utf8");
@@ -40,16 +40,19 @@ for(const file of files.filter(f=>f.endsWith(".js"))){
 }
 console.log("  ok");
 
-console.log("[2/5] Repository hygiene");
+console.log("[2/6] Repository hygiene");
 runTest("repository hygiene checks","tests/repository-hygiene.test.mjs");
 
-console.log("[3/5] App structure contracts");
+console.log("[3/6] App structure contracts");
 runTest("app contract tests","tests/app-contract.test.mjs");
 
-console.log("[4/5] Page-load performance contracts");
+console.log("[4/6] Page-load performance contracts");
 runTest("performance contract tests","tests/performance-contract.test.mjs");
 
-console.log("[5/5] Temporal model regressions");
+console.log("[5/6] Cross-year history regressions");
+runTest("history regression tests","tests/history.test.mjs");
+
+console.log("[6/6] Temporal model regressions");
 runTest("temporal regression tests","tests/record-model.test.mjs");
 
 console.log("\nAll pre-release verification checks passed.");
