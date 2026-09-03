@@ -17,10 +17,9 @@ document.head.appendChild(layoutFix);
 
 const migrated=await runDataMigrationV2();
 if(migrated){
-  // The migration writes dataVersion last; reload once so the original app state
-  // is rebuilt against the canonical V2 sleep records.
   location.reload();
 }else{
   await import("./sleep-v2.js");
+  await import("./json-import-v2.js");
   await import("./export-v2.js");
 }
