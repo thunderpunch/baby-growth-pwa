@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.0-temporal-v3";
+const CACHE_NAME="baby-growth-pwa-v1.3.1-atomic-boot";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
@@ -59,7 +59,7 @@ async function cacheFirst(request){
   const cached=await caches.match(request);
   if(cached) return cached;
   const response=await fetch(request);
-  await putInCurrentCache(request,response);
+  await putInCurrentCache(request,response.clone());
   return response;
 }
 
