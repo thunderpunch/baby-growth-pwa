@@ -2,7 +2,7 @@ const PROFILE_FIELD_SELECTOR = [
   "#babyName", "#birthDate", "#sex",
   "#weekdayBedtime", "#weekdayLatency", "#weekdayNaps", "#weekdayCaregiver",
   "#weekendBedtime", "#weekendLatency", "#weekendNaps", "#weekendCaregiver",
-  "#feedingMode", "#sleepEnvironment", "#settlingMethod",
+  "#sleepEnvironment", "#settlingMethod",
   "#mainIssue"
 ].join(",");
 
