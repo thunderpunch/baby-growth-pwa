@@ -29,8 +29,11 @@ assert.match(schema,/timeModelVersion\s*=\s*1/,"JSON schema docs must describe t
 assert.match(schema,/canonical temporal/i,"JSON schema docs must describe canonical temporal");
 assert.doesNotMatch(schema,/Current `schemaVersion` is `1\.0\.0`|当前.*1\.0\.0/,"obsolete schema 1.0 documentation must not return");
 
-assert.doesNotMatch(architecture,/nightSleepAt|nightWakeAt|nightSleepEntries|ensureNightCard/,"Architecture must not document removed legacy sleep mounts as current");
-assert.doesNotMatch(maintenance,/当前仍保留隐藏的 `nightSleepAt/,"Maintenance must not claim removed sleep mounts are current");
+// Removed compatibility names may appear in maintenance/history prose, but the docs must clearly
+// state that they are gone rather than presenting them as current runtime requirements.
+assert.match(architecture,/nightSleepAt[\s\S]{0,160}(?:已经删除|已删除)|隐藏挂载已经删除/,"Architecture must state that legacy Sleep mounts are removed");
+assert.match(architecture,/ensureNightCard\(\)[\s\S]{0,120}(?:不再存在|已删除)|不再存在 `ensureNightCard/,"Architecture must state that ensureNightCard compatibility is gone");
+assert.match(maintenance,/nightSleepAt[\s\S]{0,180}已物理删除|已物理删除的历史实现[\s\S]*nightSleepAt/,"Maintenance must classify legacy Sleep mounts as physically removed");
 
 let obsoleteProtocolExists=true;
 try{await access(path.join(root,"DATA_PROTOCOL.md"));}catch{obsoleteProtocolExists=false;}
