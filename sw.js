@@ -1,6 +1,6 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.21-baby-silhouette";
+const CACHE_NAME="baby-growth-pwa-v1.2.0-sleep-data-v2";
 const APP_SHELL=[
-  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js","./update-coordinator.js","./gesture-guard.js","./remote-quick-config.js","./sleep-method.js","./icon-theme.js","./icon-theme.css","./home-config.json","./interaction-guard.css","./db.js","./manifest.webmanifest","./manifest-girl.webmanifest","./manifest-boy.webmanifest",
+  "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js","./update-coordinator.js","./gesture-guard.js","./remote-quick-config.js","./sleep-method.js","./icon-theme.js","./icon-theme.css","./migration-v2.js","./sleep-v2.js","./sleep-v2.css","./export-v2.js","./export-v2.css","./home-config.json","./interaction-guard.css","./db.js","./manifest.webmanifest","./manifest-girl.webmanifest","./manifest-boy.webmanifest",
   "./icons/baby-neutral-approved.svg","./icons/baby-girl-approved.svg","./icons/baby-boy-approved.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
