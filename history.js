@@ -75,24 +75,9 @@ function ensureStyle(){
   document.head.appendChild(link);
 }
 
-function updateLegacyHistoryShell(view){
-  const subtitle=view.querySelector(".page-sub");
-  if(subtitle)subtitle.textContent="查看最近记录，或按月份回看。";
-
-  // app.js still binds these legacy actions during startup. Keep their DOM mounts hidden until
-  // the app-shell extraction removes those obsolete handlers; History itself no longer exposes them.
-  const tools=view.querySelector(".history-tools");
-  if(tools){
-    tools.hidden=true;
-    tools.setAttribute("aria-hidden","true");
-  }
-}
-
 function ensureBrowser(){
-  const view=$("historyView"),grid=$("historyGrid");
-  if(!view||!grid)return null;
-  updateLegacyHistoryShell(view);
-
+  const grid=$("historyGrid");
+  if(!$("historyView")||!grid)return null;
   let browser=$("historyBrowser");
   if(browser)return browser;
 
@@ -248,8 +233,6 @@ function openHistory(){
 
 function install(){
   ensureStyle();
-  const view=$("historyView");
-  if(view)updateLegacyHistoryShell(view);
   document.addEventListener("click",event=>{
     const target=event.target instanceof Element?event.target.closest('.nav button[data-view="history"]'):null;
     if(!target)return;
