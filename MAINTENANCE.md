@@ -36,9 +36,12 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 - `sleep-v2.js`
 - `sleep-v2.css`
 - `sleep-method.js`
+- `sleep-ui-bridge.js`
 - `icons/baby-neutral.svg`
 
 `tests/repository-hygiene.test.mjs` 会阻止这些旧文件被无意重新加入。
+
+其中 `sleep-ui-bridge.js` 已通过结构性改造删除：早安、昨晚小结、晚安现在直接存在于 `index.html` 的最终位置，不再运行时生成后搬运。
 
 ## 4. 不能仅因为名字旧就删除的文件
 
@@ -52,11 +55,11 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 
 文件名旧，但当前 `data-io-v3.js` 仍然实际引用它。它不是死文件。后续整理 Data I/O 模块时应改名为语义化名称，例如 `data-io.css`，而不是直接删除。
 
-### `sleep-ui-bridge.js`
+### 隐藏的旧睡眠字段
 
-当前仍参与运行，只负责把睡眠模块生成的早安/昨夜小结/晚安节点移动到最终布局。它是明确的临时兼容层。
+`index.html` 当前仍保留隐藏的 `nightSleepAt / nightWakeAt / nightSleepEntries`，仅用于兼容尚未拆完的 `app.js` 与 `sleep-v3` 旧挂载逻辑。
 
-目标状态：最终结构直接存在于页面/睡眠组件中，然后删除 bridge，而不是继续向 bridge 增加职责。
+它们不参与可见布局，也不会再生成或搬运可见按钮。下一阶段删除 `app.js` 旧 sleep modal / `day.nightSleep` 兼容代码后，这几个隐藏挂载点也应一起删除。
 
 ## 5. 后续代码结构优化目标
 
@@ -75,12 +78,17 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 
 ### Sleep
 
-目标：
+当前已完成：
+
+- 夜间入口最终 DOM 不再运行时搬运；
+- `sleep-ui-bridge.js` 已删除；
+- 可见结构固定为：早安 → 昨晚小结 → 晚安。
+
+下一步：
 
 - `sleep-v3.js` 只负责睡眠业务、编辑器和睡眠 projection；
-- 夜间入口最终 DOM 不再运行时搬运；
-- 删除 `sleep-ui-bridge.js`；
 - 删除 `app.js` 中旧 sleep modal / `day.nightSleep` 兼容代码；
+- 删除隐藏 legacy sleep 挂载点；
 - 时间事实只来源于 canonical temporal model。
 
 ### Styles
@@ -123,7 +131,7 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 满足以下条件后再考虑：
 
 - 数据模型至少连续多个版本无迁移事故；
-- `sleep-ui-bridge` 等临时兼容层已经删除；
+- 临时兼容层已经删除或明确收敛；
 - 自动验证覆盖启动、数据、核心交互和 repository hygiene；
 - 当前 Pages 版本经过稳定使用；
 - 已建立完整仓库备份；
