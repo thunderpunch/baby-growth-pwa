@@ -42,7 +42,6 @@ function normalizeLegacySleep(r){
   if(start && end && stampMs(end)<=stampMs(start)) end=localStamp(shiftDateKey(datePart(start),1),timePart(end));
   next.startDateTime=start;
   next.endDateTime=end;
-  // Transitional presentation fields. Canonical sleep time is startDateTime/endDateTime.
   next.startTime=timePart(start)||next.startTime||"";
   next.endTime=timePart(end)||next.endTime||"";
   if(end) next.date=datePart(end); else if(start) next.date=datePart(start);
@@ -58,8 +57,10 @@ function migratedNightSleep(day){
     id:`migrated-night:${wakeDate}`,
     date:wakeDate,
     type:"sleep",status:"confirmed",deleted:false,
+    nightAnchor:true,nightKey:wakeDate,
     startDateTime:start,endDateTime:end,
     startTime:timePart(start),endTime:timePart(end),
+    sleepMethod:ns.sleepMethod||"",
     note:"由旧版“夜间睡眠”一次性迁移",
     source:"migration_v2_night_sleep",
     createdAt:day.updatedAt||new Date().toISOString(),
@@ -97,7 +98,6 @@ export async function runDataMigrationV2(){
     }
   }
 
-  // Version is written last. If any write above fails, the next start retries idempotently.
   await setSetting("dataVersion",CURRENT_DATA_VERSION);
   return true;
 }
