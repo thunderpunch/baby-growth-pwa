@@ -1,1 +1,0 @@
-approved icon assets are generated from the confirmed Scheme A visual; binary upload pending
