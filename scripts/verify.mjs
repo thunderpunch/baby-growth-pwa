@@ -21,8 +21,15 @@ function fail(label,result){
   process.stderr.write(result.stderr||"");
   throw new Error(`${label} failed with exit code ${result.status}`);
 }
+function runTest(label,file){
+  const result=spawnSync(process.execPath,["--experimental-default-type=module",file],{
+    cwd:root,encoding:"utf8",stdio:"pipe",env:{...process.env,TZ:"Asia/Singapore"}
+  });
+  if(result.status!==0)fail(label,result);
+  process.stdout.write(result.stdout);
+}
 
-console.log("[1/3] JavaScript syntax");
+console.log("[1/4] JavaScript syntax");
 const files=await walk(root);
 for(const file of files.filter(f=>f.endsWith(".js"))){
   const source=await readFile(file,"utf8");
@@ -33,18 +40,13 @@ for(const file of files.filter(f=>f.endsWith(".js"))){
 }
 console.log("  ok");
 
-console.log("[2/3] App structure contracts");
-let result=spawnSync(process.execPath,["--experimental-default-type=module","tests/app-contract.test.mjs"],{
-  cwd:root,encoding:"utf8",stdio:"pipe",env:{...process.env,TZ:"Asia/Singapore"}
-});
-if(result.status!==0)fail("app contract tests",result);
-process.stdout.write(result.stdout);
+console.log("[2/4] App structure contracts");
+runTest("app contract tests","tests/app-contract.test.mjs");
 
-console.log("[3/3] Temporal model regressions");
-result=spawnSync(process.execPath,["--experimental-default-type=module","tests/record-model.test.mjs"],{
-  cwd:root,encoding:"utf8",stdio:"pipe",env:{...process.env,TZ:"Asia/Singapore"}
-});
-if(result.status!==0)fail("temporal regression tests",result);
-process.stdout.write(result.stdout);
+console.log("[3/4] Page-load performance contracts");
+runTest("performance contract tests","tests/performance-contract.test.mjs");
+
+console.log("[4/4] Temporal model regressions");
+runTest("temporal regression tests","tests/record-model.test.mjs");
 
 console.log("\nAll pre-release verification checks passed.");
