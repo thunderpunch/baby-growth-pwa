@@ -33,8 +33,16 @@ for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nigh
 assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html must load app.js as module");
 assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"index.html must load export-ipad.js as module");
 
-// Atomic boot contract: migration may run inline, but must not force another page reload.
+// Progressive boot contract: default HTML may paint first, but feature hydration must never
+// blank the whole page or start the complete document a second time.
 assert.doesNotMatch(entry,/location\.reload\s*\(/,"export-ipad.js must not force a second boot after migration");
+assert.doesNotMatch(entry,/style\.visibility\s*=\s*["']hidden["']/,"boot must not hide the whole document");
+assert.doesNotMatch(entry,/style\.display\s*=\s*["']none["']/,"boot must not blank the whole document");
+assert.match(entry,/document\.documentElement\.classList\.add\(["']app-ready["']\)/,"default UI must be released before awaited feature hydration");
+const readyAt=entry.indexOf('classList.add("app-ready")');
+const firstAwait=entry.indexOf("await ");
+assert.ok(readyAt>=0&&(firstAwait<0||readyAt<firstAwait),"app-ready must happen before the first await");
+
 for(const moduleName of ["migration-v3.js","sleep-v3.js","sleep-ui-bridge.js","timeline-v3.js","data-io-v3.js"]){
   assert.ok(entry.includes(`./${moduleName}`),`export-ipad.js missing boot module ${moduleName}`);
 }
