@@ -1,3 +1,4 @@
+import "./icon-theme.js";
 import "./profile-save-guard.js";
 import "./baby-name.js";
 import "./time-behavior.js";
@@ -6,7 +7,6 @@ import "./update-coordinator.js";
 import "./gesture-guard.js";
 import "./remote-quick-config.js";
 import "./sleep-method.js";
-import "./icon-theme.js";
 
 const layoutFix=document.createElement("link");
 layoutFix.rel="stylesheet";
