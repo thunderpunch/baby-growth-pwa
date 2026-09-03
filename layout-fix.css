@@ -57,16 +57,20 @@ label,
   max-width:100%;
 }
 
-/* Profile is the only page whose desktop grid reserves a 330px secondary
-   column. A classic iPad landscape viewport is 1024 CSS px, only 4px above
-   the old 1020px page breakpoint. Keep the page itself shrinkable and stack
-   the two major Profile columns before that fragile boundary is reached. */
+/* Profile is the only page whose base desktop grid used to reserve a hard
+   330px secondary column. That can overflow on wide iPad landscape viewports
+   that still stay in two-column mode. Both tracks must therefore be allowed
+   to shrink; the 1100px breakpoint below is only a layout preference, not a
+   correctness requirement. */
 #profileView,
 #profileView .profile-grid,
 #profileView .right-profile-column{
   width:100%;
   min-width:0;
   max-width:100%;
+}
+#profileView .profile-grid{
+  grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)!important;
 }
 
 @media (max-width:1100px){
