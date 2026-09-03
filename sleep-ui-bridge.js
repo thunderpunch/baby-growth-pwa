@@ -30,6 +30,16 @@ function sleepLikeRow(edit){
   const main=edit.closest(".row")?.querySelector(".rowmain")?.textContent?.trim()||"";
   return main.startsWith("睡眠 ·")||main.startsWith("夜间睡眠 ·");
 }
+function eventTime(record){
+  if(!record)return "99:99";
+  if(record.type==="sleep"){
+    // A completed overnight record belongs to the morning/final-wake day, so its
+    // position in that day's timeline is the good-morning time, not last night's bedtime.
+    if(record.nightAnchor&&record.endDateTime)return timePart(record.endDateTime)||record.endTime||"99:99";
+    return timePart(record.startDateTime)||record.startTime||timePart(record.endDateTime)||record.endTime||"99:99";
+  }
+  return record.time||record.wakeTime||"99:99";
+}
 
 // The old night-sleep card remains only because app.js still binds its hidden fields.
 // Visually, the three sleep widgets are direct siblings in sidecol: 早安 -> 昨晚小结 -> 晚安.
@@ -52,17 +62,23 @@ function detachSleepWidgets(){
 }
 
 async function decorateTimeline(){
-  const edits=Array.from(document.querySelectorAll("#timeline [data-edit-id]"));
+  const timeline=$("timeline");
+  if(!timeline)return;
+  const edits=Array.from(timeline.querySelectorAll("[data-edit-id]"));
+  const resolved=[];
   await Promise.all(edits.map(async edit=>{
     const row=edit.closest(".row"),main=row?.querySelector(".rowmain"),sub=row?.querySelector(".rowsub"),time=row?.querySelector(".time");
     if(!row||!main||!sub)return;
     const record=await getRecord(edit.dataset.editId);if(!record)return;
+    const orderTime=eventTime(record);
+    row.dataset.timelineEventTime=orderTime;
+    resolved.push({row,orderTime});
     if(record.type==="sleep"){
       edit.dataset.sleepV3Record="sleep";
       const start=timePart(record.startDateTime)||record.startTime||"";
       const end=timePart(record.endDateTime)||record.endTime||"";
       const suffix=end||(record.nightAnchor?"待早安":"?");
-      setText(time,start||end||"—");
+      setText(time,orderTime==="99:99"?"—":orderTime);
       setText(main,`${record.nightAnchor?"夜间睡眠":"睡眠"} · ${start||"?"}～${suffix}`);
       const mins=durationMinutes(record)??clockMinutes(record.startTime,record.endTime);
       setText(sub,[fmtDuration(mins),record.sleepMethod].filter(Boolean).join(" · ")||"记录未完整");
@@ -71,6 +87,13 @@ async function decorateTimeline(){
       setText(sub,[record.resultLabel,record.note,record.nightKey&&`归属 ${fmtDay(record.nightKey)}昨夜`].filter(Boolean).join(" · "));
     }
   }));
+
+  // app.js still sorts with legacy time fields. Reorder only the rendered rows here so
+  // new datetime-based records follow the same chronological semantics as all other rows.
+  const rows=Array.from(timeline.children).filter(node=>node.classList?.contains("row"));
+  rows.sort((a,b)=>(a.dataset.timelineEventTime||a.querySelector(".time")?.textContent||"99:99")
+    .localeCompare(b.dataset.timelineEventTime||b.querySelector(".time")?.textContent||"99:99"));
+  for(const row of rows)timeline.appendChild(row);
 }
 function scheduleDecorate(delay=30){
   clearTimeout(decorateTimer);
