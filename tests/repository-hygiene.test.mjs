@@ -14,7 +14,8 @@ const forbidden=[
   "sleep-v2.css",
   "sleep-method.js",
   "sleep-ui-bridge.js",
-  "icons/baby-neutral.svg"
+  "icons/baby-neutral.svg",
+  "DATA_PROTOCOL.md"
 ];
 for(const file of forbidden){
   assert.equal(await exists(file),false,`obsolete file must not return: ${file}`);
