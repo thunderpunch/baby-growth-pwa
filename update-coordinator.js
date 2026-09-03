@@ -29,8 +29,9 @@ async function requestFreshServiceWorker(){
       updateViaCache:"none"
     });
 
-    // Explicitly ask the browser to check sw.js on every app start.
-    // Offline failures are harmless because the active worker and caches remain available.
+    // Check the worker script immediately on app boot rather than waiting for window.load.
+    // This shortens the period in which an already-open installation can still be controlled
+    // by an older cache policy.
     try{ await registration.update(); }catch{}
 
     if(registration.waiting){
@@ -52,9 +53,4 @@ async function requestFreshServiceWorker(){
 }
 
 clearReloadGuardLater();
-
-if(document.readyState==="complete"){
-  requestFreshServiceWorker();
-}else{
-  window.addEventListener("load",requestFreshServiceWorker,{once:true});
-}
+void requestFreshServiceWorker();
