@@ -28,9 +28,10 @@ function formatTrigger(input){
 function syncTrigger(input){
   const trigger=enhanced.get(input);
   if(!trigger)return;
-  trigger.textContent=formatTrigger(input);
+  const text=formatTrigger(input);
+  if(trigger.textContent!==text)trigger.textContent=text;
   trigger.classList.toggle("is-empty",!input.value);
-  trigger.dataset.value=input.value||"";
+  if(trigger.dataset.value!==(input.value||""))trigger.dataset.value=input.value||"";
 }
 function syncAll(){
   document.querySelectorAll(DATE_INPUT_SELECTOR).forEach(input=>{
@@ -178,11 +179,10 @@ function bind(){
     for(const mutation of mutations){
       for(const node of mutation.addedNodes){
         if(!(node instanceof Element))continue;
-        if(node.matches?.(DATE_INPUT_SELECTOR))enhanceInput(node);
+        if(node.matches?.(DATE_INPUT_SELECTOR)&&node instanceof HTMLInputElement)enhanceInput(node);
         node.querySelectorAll?.(DATE_INPUT_SELECTOR).forEach(el=>{if(el instanceof HTMLInputElement)enhanceInput(el);});
       }
     }
-    syncAll();
   });
   observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener("click",()=>{
