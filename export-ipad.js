@@ -1,8 +1,8 @@
-import {runDataMigrationV3} from "./migration-v3.js";
+// Progressive boot: static/default UI stays visible while local data and feature modules hydrate it.
+// app-ready is set before any awaited import so the old boot-gating CSS cannot create a blank
+// interval while modules or IndexedDB are loading. The CSS gate is now compatibility-only.
+document.documentElement.classList.add("app-ready");
 
-// Progressive boot: the static/default UI remains visible while local data and feature modules
-// initialize. Feature modules update the existing DOM in place. Never blank the whole app during
-// boot; a partially hydrated page is preferable to default -> blank -> real-content flashing.
 try{
   await import("./icon-theme.js");
   await import("./profile-save-guard.js");
@@ -19,6 +19,7 @@ try{
   layoutFix.dataset.tabletLayout="1.1.8";
   document.head.appendChild(layoutFix);
 
+  const {runDataMigrationV3}=await import("./migration-v3.js");
   await runDataMigrationV3();
   await import("./sleep-v3.js");
   await import("./sleep-ui-bridge.js");
