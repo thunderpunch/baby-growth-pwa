@@ -1,30 +1,69 @@
-// Progressive boot: static/default UI stays visible while local data and feature modules hydrate it.
-// app-ready is set before any awaited import so the old boot-gating CSS cannot create a blank
-// interval while modules or IndexedDB are loading. The CSS gate is now compatibility-only.
+// Progressive boot: keep the static/default UI visible and hydrate it in place.
+// Start render-critical styles immediately so feature modules do not introduce late CSS requests.
 document.documentElement.classList.add("app-ready");
 
+function ensureStylesheet(href,dataAttr,dataValue="1"){
+  if(document.querySelector(`link[${dataAttr}]`))return;
+  const link=document.createElement("link");
+  link.rel="stylesheet";
+  link.href=new URL(href,import.meta.url).href;
+  link.setAttribute(dataAttr,dataValue);
+  document.head.appendChild(link);
+}
+
+ensureStylesheet("./layout-fix.css?v=1.1.8","data-tablet-layout","1.1.8");
+ensureStylesheet("./sleep-v3.css","data-sleep-v3-style");
+ensureStylesheet("./icon-theme.css","data-baby-icon-theme");
+ensureStylesheet("./baby-name.css","data-baby-name-style");
+ensureStylesheet("./time-picker.css","data-time-picker-style");
+ensureStylesheet("./interaction-guard.css","data-interaction-guard");
+
+let dataIoPromise=null;
+function loadDataIo(){
+  return dataIoPromise||(dataIoPromise=import("./data-io-v3.js").catch(error=>{
+    dataIoPromise=null;
+    throw error;
+  }));
+}
+
 try{
-  await import("./icon-theme.js");
-  await import("./profile-save-guard.js");
-  await import("./baby-name.js");
-  await import("./time-behavior.js");
-  await import("./recent-milk-template.js");
-  await import("./update-coordinator.js");
-  await import("./gesture-guard.js");
-  await import("./remote-quick-config.js");
+  // Independent boot helpers can download, parse and initialize in parallel.
+  const bootModules=[
+    import("./icon-theme.js"),
+    import("./profile-save-guard.js"),
+    import("./baby-name.js"),
+    import("./time-behavior.js"),
+    import("./recent-milk-template.js"),
+    import("./update-coordinator.js"),
+    import("./gesture-guard.js"),
+    import("./remote-quick-config.js"),
+    import("./migration-v3.js")
+  ];
+  const results=await Promise.all(bootModules);
+  const {runDataMigrationV3}=results.at(-1);
 
-  const layoutFix=document.createElement("link");
-  layoutFix.rel="stylesheet";
-  layoutFix.href=new URL("./layout-fix.css?v=1.1.8",import.meta.url).href;
-  layoutFix.dataset.tabletLayout="1.1.8";
-  document.head.appendChild(layoutFix);
-
-  const {runDataMigrationV3}=await import("./migration-v3.js");
+  // Migration is the only data dependency before the v3 projections hydrate existing records.
   await runDataMigrationV3();
-  await import("./sleep-v3.js");
+
+  // Sleep and timeline are both needed by Today and can initialize concurrently.
+  await Promise.all([
+    import("./sleep-v3.js"),
+    import("./timeline-v3.js")
+  ]);
   await import("./sleep-ui-bridge.js");
-  await import("./timeline-v3.js");
-  await import("./data-io-v3.js");
+
+  // Data import/export is not part of Today first paint. Load it when the browser is idle,
+  // but force it immediately if the user opens the Data tab first.
+  document.addEventListener("click",event=>{
+    const target=event.target instanceof Element?event.target:null;
+    if(target?.closest('.nav button[data-view="data"]'))loadDataIo().catch(error=>console.error("Data IO boot failed",error));
+  },{capture:true});
+
+  if("requestIdleCallback" in window){
+    requestIdleCallback(()=>loadDataIo().catch(error=>console.error("Data IO idle boot failed",error)),{timeout:2500});
+  }else{
+    setTimeout(()=>loadDataIo().catch(error=>console.error("Data IO idle boot failed",error)),1200);
+  }
 }catch(error){
   console.error("App feature boot failed",error);
 }
