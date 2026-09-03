@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.5-clean-sleep-shell";
+const CACHE_NAME="baby-growth-pwa-v1.3.6-static-sleep-layout";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
