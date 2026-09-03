@@ -1,30 +1,33 @@
-# Baby Growth Tracker JSON Data Schema
+# 宝宝成长记录 — JSON Data Schema 1.2
 
-Quick reference for agents/scripts that receive JSON exported by this project.
+这是当前 JSON 导出/恢复协议的唯一权威说明。实现以 `data-io-v3.js`、`record-model.js` 和 `db.js` 为准。
 
-## 1. Core parsing rules
+## 1. 版本
 
-- `appId` must be `baby-growth-tracker`.
-- Current `schemaVersion` is `1.0.0`.
-- Dates are local calendar dates: `YYYY-MM-DD`.
-- Clock times are local wall-clock values: `HH:mm` (24-hour), without timezone offset.
-- `createdAt` / `updatedAt` / `exportedAt` are ISO timestamps and are used for merge ordering.
-- Empty string usually means “not recorded / unknown”, not zero.
-- Unknown extra fields should be treated as forward-compatible extensions; do not reject an export only because it contains newer optional fields.
-- For analysis, only `status: "confirmed"` + `deleted: false` records are factual observations.
-- `status: "pending"` is a suggested/template row awaiting caregiver confirmation and must not be counted as fact.
-- `deleted: true` is a tombstone and should be preserved during merge.
+当前：
 
-## 2. Top-level export
+- `appId = "baby-growth-tracker"`
+- `schemaVersion = "1.2.0"`
+- `dataVersion = 3`
+- `timeModelVersion = 1`
+
+导入目前兼容 schema `1.1.0` 和 `1.2.0`；旧数据导入后会经过 canonicalize。
+
+## 2. 顶层结构
 
 ```json
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.2.0",
+  "dataVersion": 3,
+  "timeModelVersion": 1,
   "appId": "baby-growth-tracker",
   "deviceId": "...",
   "exportId": "...",
-  "exportedAt": "2026-09-03T00:00:00.000Z",
-  "range": {"start": "2026-09-01", "end": "2026-09-03"},
+  "exportedAt": "2026-09-03T09:00:00.000Z",
+  "range": {
+    "start": "2026-09-01",
+    "end": "2026-09-03"
+  },
   "profileVersions": [],
   "currentProfileVersionId": "...",
   "days": [],
@@ -32,22 +35,209 @@ Quick reference for agents/scripts that receive JSON exported by this project.
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `schemaVersion` | Export contract version. |
-| `appId` | Stable app identifier. |
-| `deviceId` | Local installation/device identifier; not a human identity. |
-| `exportId` | Unique ID of this export operation. |
-| `exportedAt` | ISO export timestamp. |
-| `range.start/end` | Inclusive local-date range. |
-| `profileVersions` | Profile versions relevant to the range. |
-| `currentProfileVersionId` | Currently active profile version ID; may be `null`. |
-| `days` | Day-level background facts. |
-| `records` | Event-like records and deletion tombstones. |
+`range.start/end` 是包含首尾的本地日历日期范围。
 
-## 3. Profile versions
+`createdAt / updatedAt / exportedAt` 是元数据时间，不代表事件真实发生时间。
 
-Profiles are versioned because long-running background conditions can change. Use a new version for a lasting phase change; simple corrections update the current version.
+## 3. Canonical temporal
+
+所有事件真实时间统一存在 `record.temporal`：
+
+```json
+{
+  "version": 1,
+  "zone": "Asia/Singapore",
+  "occurred": {
+    "atMs": 1788400000000,
+    "date": "2026-09-03",
+    "time": "08:15",
+    "offsetMinutes": -480
+  },
+  "start": null,
+  "end": null,
+  "wake": null,
+  "resleep": null
+}
+```
+
+不同记录只使用相关节点：
+
+- 单点事件：`occurred`
+- `sleep`：`start` / `end`
+- `wake`：`wake` / `resleep`
+
+### temporal node
+
+- `atMs`：epoch milliseconds，绝对时间事实。
+- `date`：用户所在地看到的 `YYYY-MM-DD`。
+- `time`：用户所在地看到的 `HH:mm`；未知可为空字符串。
+- `offsetMinutes`：与 JavaScript `Date#getTimezoneOffset()` 同语义的分钟偏移。
+- `temporal.zone`：记录时设备的 IANA timezone。
+
+排序、时长、跨午夜判断优先使用 canonical temporal，不使用 `createdAt/updatedAt`。
+
+## 4. `date` 字段
+
+每条 record 仍保留顶层：
+
+```json
+"date": "2026-09-03"
+```
+
+它主要用于 IndexedDB `date` index 和页面业务归档，不是唯一真实事件时间。
+
+例如：
+
+- 9 月 2 日 19:42 晚安
+- 9 月 3 日 05:35 早安
+
+夜间主睡可归档为：
+
+```json
+{
+  "date": "2026-09-03",
+  "nightKey": "2026-09-03",
+  "temporal": {
+    "start": {"date":"2026-09-02","time":"19:42","atMs":0,"offsetMinutes":-480},
+    "end": {"date":"2026-09-03","time":"05:35","atMs":0,"offsetMinutes":-480}
+  }
+}
+```
+
+示例中的 `atMs` 仅为占位；真实导出是实际 epoch milliseconds。
+
+## 5. Record 公共字段
+
+```json
+{
+  "id": "stable-id",
+  "date": "2026-09-03",
+  "type": "milk",
+  "status": "confirmed",
+  "deleted": false,
+  "createdAt": "...",
+  "updatedAt": "...",
+  "temporal": {}
+}
+```
+
+### `status`
+
+- `confirmed`：用户确认过的事实，可用于统计/分析。
+- `pending`：系统建议/昨日模板，不能当事实统计。
+
+### 删除 tombstone
+
+删除记录不会在 JSON 中直接消失：
+
+```json
+{
+  "deleted": true,
+  "deletedAt": "...",
+  "updatedAt": "..."
+}
+```
+
+这样重复导入或跨备份合并仍能传播删除。
+
+## 6. 记录类型
+
+当前 record types：
+
+- `sleep`
+- `milk`
+- `diet`
+- `diaper`
+- `wake`
+- `health`
+- `growth`
+- `medical`
+- `milestone`
+- `activity`
+
+### Sleep
+
+```json
+{
+  "type": "sleep",
+  "sleepMethod": "抱睡",
+  "note": "",
+  "nightAnchor": false,
+  "nightKey": null,
+  "temporal": {
+    "version": 1,
+    "zone": "Asia/Singapore",
+    "start": {"atMs":0,"date":"2026-09-03","time":"10:20","offsetMinutes":-480},
+    "end": {"atMs":0,"date":"2026-09-03","time":"11:05","offsetMinutes":-480}
+  }
+}
+```
+
+`nightAnchor: true` 表示明确由晚安/早安形成的夜间主睡事实；`nightKey` 使用该夜最终早安/结束日期。
+
+普通 sleep 不在 JSON 中持久化 `startTime/endTime/startDateTime/endDateTime` 兼容投影；这些字段仅可在运行时由 canonical temporal 推导。
+
+### Wake
+
+```json
+{
+  "type": "wake",
+  "nightKey": "2026-09-03",
+  "result": "reslept",
+  "resultLabel": "后来重新睡着",
+  "note": "",
+  "temporal": {
+    "version": 1,
+    "zone": "Asia/Singapore",
+    "wake": {"atMs":0,"date":"2026-09-03","time":"02:10","offsetMinutes":-480},
+    "resleep": {"atMs":0,"date":"2026-09-03","time":"02:35","offsetMinutes":-480}
+  }
+}
+```
+
+`nightKey` 来自用户对“属于昨晚 / 属于今晚”的选择；不要根据 Good Night 是否存在来决定。
+
+JSON 不持久化 `wakeTime/resleepTime` 兼容投影。
+
+### 单点事件
+
+`milk/diet/diaper/health/growth/medical/milestone/activity` 的事件时间存放在 `temporal.occurred`。
+
+各类型的业务字段继续直接保存在 record 上，例如：
+
+- milk：`amount`, `feedType`
+- diet：`dietType`, `amount`, `content`, `note`
+- diaper：`diaperType`, `urineAmount`, `stoolAmount`, `stoolColor`, `stoolForm`, `note`
+- health：`temperature`, `symptoms`, `medication`
+- growth：`weight`, `height`, `headCircumference`, `sourceNote`
+- medical：`eventType`, `content`, `note`
+- milestone：`milestone`, `description`
+- activity：`activityType`, `duration`, `note`
+
+JSON 不持久化旧顶层 `time` 投影。
+
+## 7. Day
+
+`days` 只保存“当天背景”，不是流水事件。
+
+```json
+{
+  "date": "2026-09-03",
+  "context": {
+    "tags": ["长牙", "外出多"],
+    "note": "下午外出明显比平时久"
+  },
+  "templateGenerated": true,
+  "templateGeneratedFrom": "2026-09-02",
+  "updatedAt": "..."
+}
+```
+
+旧版 `day.nightSleep` 不再导出。夜间睡眠事实属于 `records` 中的 canonical `sleep`。
+
+## 8. Profile version
+
+成长阶段使用版本化 profile：
 
 ```json
 {
@@ -57,253 +247,39 @@ Profiles are versioned because long-running background conditions can change. Us
   "createdAt": "...",
   "updatedAt": "...",
   "base": {
-    "name": "小满",
+    "name": "",
     "birthDate": "2026-01-26",
     "sex": "female"
   },
   "stage": {
     "dietStage": "辅食",
-    "feedingMode": "配方奶为主",
-    "sleepEnvironment": "同房婴儿床，遮光，白噪音",
-    "settlingMethod": "抱哄后放床，必要时拍睡",
-    "weekday": {
-      "bedtime": "19:30",
-      "latency": "约60分钟",
-      "naps": "3觉",
-      "caregiver": "爷爷奶奶"
-    },
-    "weekend": {
-      "bedtime": "19:30",
-      "latency": "约20分钟",
-      "naps": "3觉",
-      "caregiver": "父母"
-    },
-    "mainIssue": "最近凌晨4点左右醒后难以重新入睡"
+    "weekday": {},
+    "weekend": {},
+    "mainIssue": ""
   }
 }
 ```
 
-### Profile fields
+历史分析按 `effectiveFrom` 选择当时有效的 profile，不把最新阶段倒灌到过去。
 
-| Field | Meaning |
-| --- | --- |
-| `id` | Stable profile-version ID. |
-| `version` | Increasing human-readable version number. |
-| `effectiveFrom` | First local date for which this profile phase applies. |
-| `createdAt/updatedAt` | ISO timestamps. |
-| `base.name` | Baby name/nickname shown in UI. Optional in older exports. |
-| `base.birthDate` | Birth date; may be empty. |
-| `base.sex` | `female`, `male`, or empty string. |
-| `stage.dietStage` | Current primary diet stage: `辅食` or `正餐`. |
-| `stage.feedingMode` | Long-term feeding mode/background, free text, e.g. 配方奶为主 / 混合喂养 / 母乳亲喂. |
-| `stage.sleepEnvironment` | Long-term sleep environment, free text, e.g. 同房婴儿床 / 遮光 / 白噪音. |
-| `stage.settlingMethod` | Usual settling method, free text, e.g. 抱哄后放床 / 拍睡 / 奶睡. |
-| `stage.weekday` | Typical weekday sleep/care context. |
-| `stage.weekend` | Typical weekend sleep/care context. |
-| `stage.*.bedtime` | Typical bedtime / put-down value in `HH:mm`, or empty. |
-| `stage.*.latency` | Free-text typical sleep-onset latency. |
-| `stage.*.naps` | Free-text typical nap pattern/count. |
-| `stage.*.caregiver` | Main caregiver/context. |
-| `stage.mainIssue` | Current main concern or analysis focus. |
+## 9. 合并规则
 
-For historical analysis, use the profile version whose `effectiveFrom` applies to the date being analyzed. Do not apply the newest profile retroactively to older dates.
+同一稳定 ID：
 
-## 4. Day-level objects (`days`)
+- 本地不存在 → 新增；
+- `incoming.updatedAt > local.updatedAt` → incoming 覆盖；
+- 否则保留本地。
 
-```json
-{
-  "date": "2026-09-03",
-  "nightSleep": {"sleepAt": "19:45", "wakeAt": "05:10"},
-  "context": {
-    "tags": ["长牙", "外出多"],
-    "note": "下午外出时间较长"
-  },
-  "templateGenerated": true,
-  "templateGeneratedFrom": "2026-09-02",
-  "updatedAt": "..."
-}
-```
+重复导入同一快照应保持幂等。
 
-| Field | Meaning |
-| --- | --- |
-| `date` | Local date. |
-| `nightSleep.sleepAt` | Actual night sleep onset for the sleep period ending on this date; may be empty. |
-| `nightSleep.wakeAt` | Final morning wake time; may be empty. |
-| `context.tags` | Daily exceptional-context tags such as `长牙`, `不舒服`, `疫苗后`, `外出多`, `环境变化`, `照护者不同`. |
-| `context.note` | Free-text daily exceptional context. |
-| `templateGenerated` | Internal UI/template metadata, not an observed baby fact. |
-| `templateGeneratedFrom` | Internal source date for template generation; may be `null`. |
-| `updatedAt` | ISO timestamp used for merge ordering. |
+所有写入最终都经过 `db.putRecord()` → `canonicalizeRecord()`，避免导入逻辑自行产生第二套时间结构。
 
-Night sleep is filed by the date of the final morning wake, so `sleepAt` may refer to the previous calendar evening.
+## 10. 分析规则
 
-## 5. Common record envelope
+用于分析时：
 
-```json
-{
-  "id": "record-id",
-  "date": "2026-09-03",
-  "type": "milk",
-  "status": "confirmed",
-  "deleted": false,
-  "createdAt": "...",
-  "updatedAt": "..."
-}
-```
-
-Common optional metadata:
-
-- `deletedAt`: ISO deletion timestamp.
-- `deleteReason`: e.g. `not_occurred` when a pending template is marked “今天没有”.
-- `source`: provenance such as `previous_day_template` or `recent_day_template`.
-- `templateSourceId`: source record ID used to create a pending template.
-- `templateSourceDate`: source date for recent-history milk template.
-- `note`: free text where supported.
-
-Primary merge key is `id`.
-
-## 6. Record types
-
-### `sleep` — nap/daytime sleep
-
-```json
-{"type":"sleep","startTime":"09:25","endTime":"10:05","note":""}
-```
-
-- `startTime`: actual sleep onset; may be empty.
-- `endTime`: actual wake time; may be empty.
-- Incomplete sleep records are valid; do not invent missing endpoints.
-- If both exist and end < start, duration logic treats it as crossing midnight.
-
-### `milk` — milk feeding
-
-```json
-{"type":"milk","time":"07:05","amount":"180","feedType":"配方奶"}
-```
-
-- `time`: feeding time.
-- `amount`: ml, usually a numeric-like string; may be empty.
-- `feedType`: typically `配方奶`, `母乳瓶喂`, `母乳亲喂`.
-
-### `diet` — complementary food / meal / snack / water
-
-```json
-{"type":"diet","time":"12:10","dietType":"辅食","content":"米糊 + 南瓜泥","amount":"半碗"}
-```
-
-- `dietType`: e.g. `辅食`, `正餐`, `水果`, `饮水`, `加餐`, `其它`.
-- `content`: what was eaten/drunk.
-- `amount`: free-text amount.
-
-### `diaper`
-
-```json
-{
-  "type":"diaper",
-  "time":"08:40",
-  "diaperType":"尿 + 便",
-  "urineAmount":"中",
-  "stoolAmount":"少",
-  "stoolColor":"黄",
-  "stoolForm":"糊状",
-  "note":""
-}
-```
-
-- `diaperType`: `尿`, `便`, or `尿 + 便`.
-- Urine/stool amount values are typically `少`, `中`, `多`.
-- Stool color UI may include `黄`, `棕`, `绿`, `黑`, `红`, `灰白`, `其它`.
-- Stool form UI may include `稀`, `糊状`, `成形`, `偏硬`, `水样`, `其它`.
-
-### `wake` — night awakening
-
-```json
-{
-  "type":"wake",
-  "wakeTime":"04:05",
-  "resleepTime":"",
-  "result":"no_resleep",
-  "resultLabel":"一直没再睡到起床",
-  "note":""
-}
-```
-
-- `result`: `reslept`, `no_resleep`, or `unknown`.
-- Prefer stable `result` code over `resultLabel` during analysis.
-
-### `health` — health / medication
-
-```json
-{"type":"health","time":"14:20","temperature":"37.6","symptoms":"鼻塞","medication":""}
-```
-
-- `temperature`: Celsius, numeric-like or empty.
-- `symptoms`: free text.
-- `medication`: medicine + actual dose/context, free text.
-
-### `growth` — growth measurement
-
-```json
-{"type":"growth","time":"","weight":"8.20","height":"69.5","headCircumference":"44","sourceNote":"社区体检"}
-```
-
-- `weight`: kg.
-- `height`: cm.
-- `headCircumference`: cm.
-- `sourceNote`: measurement source/context.
-
-### `medical` — vaccine / medical visit
-
-```json
-{"type":"medical","time":"","eventType":"疫苗","content":"...","note":"..."}
-```
-
-`eventType` may include `疫苗`, `儿保`, `门诊`, `急诊`, `其它`.
-
-### `milestone` — developmental milestone
-
-```json
-{"type":"milestone","time":"","milestone":"独坐","description":"第一次可以稳定独坐约1分钟"}
-```
-
-Milestone categories may include `翻身`, `独坐`, `爬行`, `扶站`, `出牙`, `语言`, `其它`.
-
-### `activity` — activity / outdoor time
-
-```json
-{"type":"activity","time":"16:10","activityType":"户外","duration":"约45分钟","note":""}
-```
-
-`duration` is deliberately rough/free text.
-
-## 7. Automatic-template semantics
-
-The app uses pending templates to reduce repeated caregiver input.
-
-1. Generated templates use `status: "pending"`; they are not factual.
-2. Confirming a template changes it to `status: "confirmed"`.
-3. Choosing “今天没有” creates/preserves a deleted tombstone, typically with `deleteReason: "not_occurred"`.
-4. `previous_day_template` is the older previous-day mechanism.
-5. `recent_day_template` is the newer milk-prefill mechanism: for a blank page not later than tomorrow, search backward for the most recent historical date containing confirmed milk records and create pending copies. If no confirmed historical milk exists, generate nothing.
-6. Pending/deleted templates must never be used as evidence that feeding happened.
-
-## 8. Merge / restore rules
-
-Recommended idempotent merge:
-
-1. Match records/profiles by stable `id`.
-2. If ID does not exist locally, add it.
-3. If ID exists on both sides, compare valid `updatedAt` values.
-4. Keep the newer object.
-5. Preserve deletion tombstones; never resurrect an older non-deleted copy.
-6. Re-importing the same export should not create duplicates.
-7. Day objects are keyed by `date`; for conflicts use newest `updatedAt`.
-
-## 9. Analysis guidance
-
-- Prefer longitudinal patterns over one-day conclusions.
-- Use profile versions as context, especially `feedingMode`, `sleepEnvironment`, `settlingMethod`, weekday/weekend routines, caregiver, and diet stage.
-- Compute derived metrics yourself; caregivers are not expected to enter totals or wake windows.
-- Useful derived metrics include: 24h sleep, night/day sleep allocation, nap count/duration, wake windows, final wake window, sleep-onset latency, night-wake duration, suspected early wake, total confirmed milk, feeding intervals, and weekday/weekend differences.
-- Missing fields are missing data, not zero and not negative evidence.
-- Do not count `pending` or `deleted` records as observed events.
+- 只把 `status: "confirmed" && deleted: false` 当事实；
+- `pending` 只能作为待确认建议；
+- `deleted: true` 仅用于合并/审计，不计入统计；
+- 不根据字段缺失自行虚构事实；
+- 睡眠 nap/night 分类可以由分析层推断，但不要改写原始事实。
