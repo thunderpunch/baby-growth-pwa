@@ -43,12 +43,16 @@ All pre-release verification checks passed.
 
 `tests/ipad-layout.test.mjs`
 
+`tests/date-picker.test.mjs`
+
 覆盖：
 
 - DOM ID 不重复；
 - Today / History / Sleep 等关键挂载存在；
 - 顶部日期控制只在 Today 激活时可见，其它页面不能出现无效全局日期选择器；
 - iPad Profile 页面在经典 1024 CSS px 横屏宽度前必须进入安全单列布局，Profile 根容器和主要列必须允许收缩，不能制造页面级横向滚动；
+- 自定义日期选择器固定渲染 6 周 / 42 格，5 周月和 6 周月切换不能改变面板高度；
+- 日期选择器显示可直接选择的前后月日期，支持 iPad 左右滑动切月，并让上月 / 下月 / 今天动作遵守输入的 min/max；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；
@@ -176,14 +180,18 @@ node scripts/verify.mjs
 - 禁止全库扫描；
 - 不恢复已经删除的重复控件。
 
-### iPad / 响应式布局
+### iPad / 响应式布局 / 日期选择器
 
 至少确认：
 
 - 1024 CSS px 横屏边界；
 - Profile / Data 的主要 grid item 都允许 `min-width:0` 收缩；
 - 原生表单控件或自定义日期触发器不会撑宽 grid；
-- 不用单纯 `overflow-x:hidden` 掩盖本应消除的内容溢出。
+- 不用单纯 `overflow-x:hidden` 掩盖本应消除的内容溢出；
+- 日历始终保持 6 行，跨月份切换没有高度跳变；
+- 相邻月份日期可直接选择；
+- iPad 左右滑动可以切月，同时垂直手势不被误判为切月；
+- min/max 会禁用完全不可选的相邻月份和不可用的“今天”。
 
 ### 模块拆分 / DOM 清理
 
@@ -229,6 +237,7 @@ node scripts/verify.mjs
 - 页面能启动，无白屏；
 - Today 能看到日期前后切换和“今天”，切到 History / 档案 / 数据后日期控件消失；
 - iPad 横屏进入档案页不能横向拖动整个页面；
+- 打开日期选择器，在不同月份之间切换时面板高度保持稳定；左右滑动能切月，前后月淡化日期可以直接选择；
 - 新增一条普通记录；
 - 睡眠、早安、晚安、夜醒打开/保存；
 - History 最近30天与按月切换；
