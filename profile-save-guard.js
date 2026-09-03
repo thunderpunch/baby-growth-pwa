@@ -1,5 +1,5 @@
 const PROFILE_FIELD_SELECTOR = [
-  "#birthDate", "#sex",
+  "#babyName", "#birthDate", "#sex",
   "#weekdayBedtime", "#weekdayLatency", "#weekdayNaps", "#weekdayCaregiver",
   "#weekendBedtime", "#weekendLatency", "#weekendNaps", "#weekendCaregiver",
   "#mainIssue"
