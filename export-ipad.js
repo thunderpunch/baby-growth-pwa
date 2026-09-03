@@ -1,4 +1,5 @@
 import "./profile-save-guard.js";
+import "./baby-name.js";
 import "./time-behavior.js";
 import "./recent-milk-template.js";
 import "./update-coordinator.js";
