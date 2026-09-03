@@ -24,9 +24,10 @@ assert.match(agents,/聊天记忆不是唯一事实源/,"AGENTS.md must require 
 const runtimeSchema=dataIo.match(/const\s+SCHEMA_VERSION\s*=\s*["']([^"']+)["']/)?.[1];
 assert.ok(runtimeSchema,"data-io-v3.js schema version not found");
 assert.ok(schema.includes(`schemaVersion = \"${runtimeSchema}\"`)||schema.includes(`schemaVersion = "${runtimeSchema}"`),`JSON_DATA_SCHEMA.md must document runtime schema ${runtimeSchema}`);
-assert.match(schema,/dataVersion\s*=\s*3/,"JSON schema docs must describe dataVersion 3");
 assert.match(schema,/timeModelVersion\s*=\s*1/,"JSON schema docs must describe timeModelVersion 1");
 assert.match(schema,/canonical temporal/i,"JSON schema docs must describe canonical temporal");
+assert.match(schema,/只维护当前结构[\s\S]*不提供旧 schema 迁移或兼容/,"JSON schema docs must explicitly declare current-only data support");
+assert.doesNotMatch(schema,/dataVersion\s*=/,"removed migration dataVersion must not return to the current JSON protocol");
 assert.doesNotMatch(schema,/Current `schemaVersion` is `1\.0\.0`|当前.*1\.0\.0/,"obsolete schema 1.0 documentation must not return");
 
 // Removed compatibility names may appear in maintenance/history prose, but the docs must clearly
