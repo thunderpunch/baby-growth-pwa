@@ -162,9 +162,10 @@ async function decorateTimeline(){
       const record=await getRecord(button.dataset.editId);
       if(record?.type!=="sleep") continue;
       if(!sub.dataset.sleepMethodBase) sub.dataset.sleepMethodBase=sub.textContent || "";
-      sub.textContent=record.sleepMethod
+      const nextText=record.sleepMethod
         ? [sub.dataset.sleepMethodBase,record.sleepMethod].filter(Boolean).join(" · ")
         : sub.dataset.sleepMethodBase;
+      if(sub.textContent!==nextText) sub.textContent=nextText;
     }
   }finally{
     timelineDecorating=false;
