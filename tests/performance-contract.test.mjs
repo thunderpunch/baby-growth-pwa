@@ -5,8 +5,8 @@ import {fileURLToPath} from "node:url";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=name=>readFile(path.join(root,name),"utf8");
-const [boot,sw,sleep,timeline]=await Promise.all([
-  read("export-ipad.js"),read("sw.js"),read("sleep-v3.js"),read("timeline-v3.js")
+const [boot,sw,updater,sleep,timeline]=await Promise.all([
+  read("export-ipad.js"),read("sw.js"),read("update-coordinator.js"),read("sleep-v3.js"),read("timeline-v3.js")
 ]);
 
 // Boot helpers are independent and must not drift back to a long serial import waterfall.
@@ -20,11 +20,22 @@ for(const css of ["layout-fix.css","sleep-v3.css","icon-theme.css","baby-name.cs
 assert.match(boot,/requestIdleCallback[\s\S]*loadDataIo/,"data IO should be scheduled during browser idle time");
 assert.doesNotMatch(boot,/await\s+import\(["']\.\/data-io-v3\.js["']\)/,"data IO must not block first-screen boot");
 
-// A controlled SW version owns its static app shell. Repeat loads should not pay one network RTT
-// per script/style; navigation and remotely controlled config remain network-first.
-assert.match(sw,/navigation\s*\|\|\s*remoteConfig\s*\?\s*networkFirst\(event\.request\)\s*:\s*cacheFirst\(event\.request\)/,
-  "service worker must serve version-owned static assets cache-first");
-assert.doesNotMatch(sw,/codeOrPage\s*\?\s*networkFirst/,"scripts/styles must not regress to network-first on every refresh");
+// Mutable application code must revalidate online so a deployment does not depend on a manual
+// CACHE_NAME bump. Cache Storage remains the offline fallback; stable assets stay cache-first.
+assert.match(sw,/const\s+mutableCode\s*=\s*\[[^\]]*"script"[^\]]*"style"[^\]]*"manifest"[^\]]*\]\.includes\(event\.request\.destination\)/,
+  "service worker must explicitly classify mutable code");
+assert.match(sw,/navigation\s*\|\|\s*remoteConfig\s*\|\|\s*mutableCode[\s\S]*\?\s*networkFirst\(event\.request\)[\s\S]*:\s*cacheFirst\(event\.request\)/,
+  "scripts/styles/manifests must prefer fresh network responses with offline cache fallback");
+assert.match(sw,/fetch\(request,\{cache:"no-cache"\}\)/,
+  "network-first code requests must revalidate rather than accept a stale browser cache entry");
+assert.doesNotMatch(sw,/version-owned static assets cache-first/,
+  "old manual-cache-bump freshness policy must not return");
+
+// SW update discovery starts as soon as the coordinator module is evaluated, not after window.load.
+assert.match(updater,/void\s+requestFreshServiceWorker\(\)/,"service worker update check must start immediately");
+assert.doesNotMatch(updater,/addEventListener\(["']load["']/,"service worker update check must not wait for window.load");
+assert.match(updater,/updateViaCache:\s*["']none["']/,"worker script checks must bypass the HTTP cache");
+assert.match(updater,/registration\.update\(\)/,"coordinator must explicitly request an update check");
 
 // Home sleep hydration must be proportional to the selected day, not lifetime history size.
 assert.doesNotMatch(sleep,/\bgetAllRecords\b/,"sleep-v3 must not scan the complete record store during normal runtime");
