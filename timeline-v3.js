@@ -1,4 +1,4 @@
-import {getRecord} from "./db.js";
+import {getRecordsByDate} from "./db.js";
 import {recordTimelineMs,recordTimelineClock,recordDurationMinutes,sleepLocalRange} from "./record-model.js";
 
 const $=id=>document.getElementById(id);
@@ -19,9 +19,9 @@ function setText(node,text){if(node&&node.textContent!==text)node.textContent=te
 function recordIdForRow(row){
   return row.querySelector("[data-edit-id]")?.dataset.editId||row.dataset.pendingRow||"";
 }
-async function projectRow(row,index){
+function projectRow(row,index,recordsById){
   const id=recordIdForRow(row);if(!id)return {row,index,sortMs:Number.POSITIVE_INFINITY};
-  const record=await getRecord(id);if(!record)return {row,index,sortMs:Number.POSITIVE_INFINITY};
+  const record=recordsById.get(id);if(!record)return {row,index,sortMs:Number.POSITIVE_INFINITY};
   const main=row.querySelector(".rowmain"),sub=row.querySelector(".rowsub"),time=row.querySelector(".time");
   const clock=recordTimelineClock(record);
   setText(time,clock||"—");
@@ -43,11 +43,17 @@ function sameOrder(a,b){return a.length===b.length&&a.every((node,i)=>node===b[i
 async function projectTimeline(){
   if(running)return;
   const timeline=$("timeline");if(!timeline)return;
+  const rows=Array.from(timeline.querySelectorAll(":scope > .row"));
+  if(!rows.length)return;
+  const pageDate=$("pageDate")?.value||"";
+  if(!pageDate)return;
+
   running=true;
   try{
-    const rows=Array.from(timeline.querySelectorAll(":scope > .row"));
-    if(!rows.length)return;
-    const projected=await Promise.all(rows.map(projectRow));
+    // One indexed date query replaces one IndexedDB transaction per visible timeline row.
+    const records=await getRecordsByDate(pageDate,{includeDeleted:true});
+    const recordsById=new Map(records.map(record=>[record.id,record]));
+    const projected=rows.map((row,index)=>projectRow(row,index,recordsById));
     projected.sort((a,b)=>a.sortMs-b.sortMs||a.index-b.index);
     const ordered=projected.map(x=>x.row);
     if(!sameOrder(rows,ordered))timeline.replaceChildren(...ordered);
@@ -57,6 +63,9 @@ function schedule(delay=35){clearTimeout(timer);timer=setTimeout(()=>projectTime
 function init(){
   schedule(0);
   const timeline=$("timeline");
-  if(timeline)new MutationObserver(()=>schedule()).observe(timeline,{childList:true,subtree:true});
+  // app.js replaces/adds top-level rows when the day changes. Internal text edits performed by
+  // this projection must not schedule another projection pass.
+  if(timeline)new MutationObserver(()=>schedule()).observe(timeline,{childList:true,subtree:false});
+  $("pageDate")?.addEventListener("change",()=>schedule(0));
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
