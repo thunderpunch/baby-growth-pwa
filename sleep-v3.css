@@ -1,7 +1,3 @@
-.sleep-v3-old-hidden{display:none!important}
-.sleep-v3-legacy-card{display:none!important}
-.night-sleep-entries{display:none!important}
-
 .night-entry{width:100%;min-height:78px;padding:14px 15px;border:1px solid #e9e3eb;border-radius:17px;background:#fff;color:#4b434f;text-align:left;box-shadow:0 5px 18px rgba(73,54,74,.045);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;transition:transform .12s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease}
 .night-entry:hover{border-color:#e2d8e3;box-shadow:0 9px 22px rgba(73,54,74,.08);background:#fff}
 .night-entry:active{transform:scale(.987)}
