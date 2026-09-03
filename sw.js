@@ -1,9 +1,9 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.9-network-fresh-code";
+const CACHE_NAME="baby-growth-pwa-v1.4.0-custom-date-current-data";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
-  "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
+  "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./date-picker.js","./date-picker.css","./recent-milk-template.js",
   "./update-coordinator.js","./gesture-guard.js","./remote-quick-config.js","./icon-theme.js","./icon-theme.css",
-  "./record-model.js","./migration-v2.js","./migration-v3.js","./sleep-v3.js","./sleep-v3.css","./timeline-v3.js",
+  "./record-model.js","./sleep-v3.js","./sleep-v3.css","./timeline-v3.js",
   "./history.js","./history.css","./data-io-v3.js","./export-v2.css","./home-config.json","./interaction-guard.css","./db.js",
   "./manifest.webmanifest","./manifest-girl.webmanifest","./manifest-boy.webmanifest",
   "./icons/baby-neutral-approved.svg","./icons/baby-girl-approved.svg","./icons/baby-boy-approved.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
@@ -76,8 +76,7 @@ self.addEventListener("fetch",event=>{
   const mutableCode=["script","style","manifest"].includes(event.request.destination);
 
   // Mutable application code always revalidates online and falls back to Cache Storage offline.
-  // This removes the old requirement to bump CACHE_NAME for every JS/CSS change. Icons and
-  // other stable assets remain cache-first for fast repeat loads.
+  // Icons and other stable assets remain cache-first for fast repeat loads.
   event.respondWith(navigation || remoteConfig || mutableCode
     ? networkFirst(event.request)
     : cacheFirst(event.request));
