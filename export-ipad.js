@@ -6,6 +6,7 @@ import "./update-coordinator.js";
 import "./gesture-guard.js";
 import "./remote-quick-config.js";
 import "./sleep-method.js";
+import "./icon-theme.js";
 
 const layoutFix=document.createElement("link");
 layoutFix.rel="stylesheet";
