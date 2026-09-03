@@ -44,8 +44,7 @@ function installNightSleepMethod(){
   const wakeAt=document.getElementById("nightWakeAt");
   if(!sleepAt || !wakeAt || document.getElementById("nightSleepMethod")) return;
   const fields=sleepAt.closest(".fields2");
-  const card=sleepAt.closest(".card.pad");
-  if(!fields || !card) return;
+  if(!fields) return;
 
   const wrapper=document.createElement("label");
   wrapper.className="form-label";
@@ -55,7 +54,10 @@ function installNightSleepMethod(){
 
   const select=wrapper.querySelector("select");
   select.addEventListener("change",()=>persistNightSleepMethod().catch(error=>console.warn("Night sleep method save failed",error)));
-  const restore=()=>setTimeout(()=>persistNightSleepMethod().catch(error=>console.warn("Night sleep method restore failed",error)),0);
+  const restore=()=>{
+    setTimeout(()=>persistNightSleepMethod().catch(error=>console.warn("Night sleep method restore failed",error)),80);
+    setTimeout(()=>persistNightSleepMethod().catch(error=>console.warn("Night sleep method restore failed",error)),300);
+  };
   sleepAt.addEventListener("change",restore);
   wakeAt.addEventListener("change",restore);
   loadNightSleepMethod().catch(error=>console.warn("Night sleep method load failed",error));
@@ -105,46 +107,47 @@ function selectedModalMethod(){
   return document.querySelector("#sleepMethodChips .optionchip.active")?.dataset.sleepMethod || "";
 }
 
-async function finalizeSleepSave(context){
-  for(let attempt=0;attempt<8;attempt++){
-    await new Promise(resolve=>setTimeout(resolve,50));
+async function persistSavedSleepMethod(context){
+  for(let attempt=0;attempt<10;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,60));
+    let record=null;
+
     if(context.editingId){
-      const record=await getRecord(context.editingId);
-      if(record?.type!=="sleep") continue;
-      if((record.sleepMethod||"")===context.method) return;
+      record=await getRecord(context.editingId);
+    }else{
+      const records=await getRecordsByDate(context.date,{includeDeleted:false});
+      record=records
+        .filter(item=>item.type==="sleep")
+        .filter(item=>item.startTime===context.startTime && item.endTime===context.endTime)
+        .filter(item=>Date.parse(item.createdAt||0)>=context.startedAt-2000)
+        .sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0))[0] || null;
+    }
+
+    if(!record || record.type!=="sleep") continue;
+    if((record.sleepMethod||"")!==context.method){
       record.sleepMethod=context.method;
       record.updatedAt=nowISO();
       await putRecord(record);
-      decorateTimeline();
-      return;
     }
-
-    const records=await getRecordsByDate(context.date,{includeDeleted:false});
-    const created=records
-      .filter(record=>record.type==="sleep" && !context.beforeIds.has(record.id))
-      .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")))[0];
-    if(!created) continue;
-    created.sleepMethod=context.method;
-    created.updatedAt=nowISO();
-    await putRecord(created);
-    decorateTimeline();
+    await decorateTimeline();
     return;
   }
 }
 
-async function prepareSleepSave(button){
+function prepareSleepSave(){
   if(!document.getElementById("sleepMethodField")) return;
   const date=currentDate();
   if(!date) return;
-  const before=await getRecordsByDate(date,{includeDeleted:false});
   const context={
     date,
     editingId:editingRecordId,
     method:selectedModalMethod(),
-    beforeIds:new Set(before.map(record=>record.id))
+    startTime:document.getElementById("fStart")?.value || "",
+    endTime:document.getElementById("fEnd")?.value || "",
+    startedAt:Date.now()
   };
-  finalizeSleepSave(context).catch(error=>console.warn("Sleep method save failed",error));
-  if(button.id==="modalSave") editingRecordId=null;
+  editingRecordId=null;
+  persistSavedSleepMethod(context).catch(error=>console.warn("Sleep method save failed",error));
 }
 
 async function decorateTimeline(){
@@ -157,9 +160,11 @@ async function decorateTimeline(){
       const sub=row?.querySelector(".rowsub");
       if(!row || !sub) continue;
       const record=await getRecord(button.dataset.editId);
-      if(record?.type!=="sleep" || !record.sleepMethod) continue;
+      if(record?.type!=="sleep") continue;
       if(!sub.dataset.sleepMethodBase) sub.dataset.sleepMethodBase=sub.textContent || "";
-      sub.textContent=[sub.dataset.sleepMethodBase,record.sleepMethod].filter(Boolean).join(" · ");
+      sub.textContent=record.sleepMethod
+        ? [sub.dataset.sleepMethodBase,record.sleepMethod].filter(Boolean).join(" · ")
+        : sub.dataset.sleepMethodBase;
     }
   }finally{
     timelineDecorating=false;
@@ -184,18 +189,19 @@ if(timeline){
 document.addEventListener("click",event=>{
   const target=event.target instanceof Element ? event.target : null;
   if(!target) return;
+
   const edit=target.closest("[data-edit-id]");
   if(edit) editingRecordId=edit.dataset.editId;
   if(target.closest('[data-quick="sleep"], [data-more="sleep"]')) editingRecordId=null;
-  const save=target.closest("#modalSave, #modalSaveContinue");
-  if(save) prepareSleepSave(save).catch(error=>console.warn("Sleep method save preparation failed",error));
+
+  if(target.closest("#modalSave, #modalSaveContinue")) prepareSleepSave();
   if(target.closest("#modalCancel,#modalClose")) editingRecordId=null;
 
   if(target.closest("#prevDay,#nextDay,#todayBtn,[data-history-date]")){
-    setTimeout(()=>loadNightSleepMethod().catch(error=>console.warn("Night sleep method refresh failed",error)),80);
+    setTimeout(()=>loadNightSleepMethod().catch(error=>console.warn("Night sleep method refresh failed",error)),100);
   }
 },true);
 
 document.getElementById("pageDate")?.addEventListener("change",()=>{
-  setTimeout(()=>loadNightSleepMethod().catch(error=>console.warn("Night sleep method refresh failed",error)),80);
+  setTimeout(()=>loadNightSleepMethod().catch(error=>console.warn("Night sleep method refresh failed",error)),100);
 });
