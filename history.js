@@ -1,7 +1,9 @@
 import {getDaysInRange,getRecordsInRange} from "./db.js";
+import {shiftDateKey,validDateKey} from "./record-model.js";
 
 const $=id=>document.getElementById(id);
 const pad2=n=>String(n).padStart(2,"0");
+let mode="recent";
 let monthKey="";
 let renderToken=0;
 
@@ -23,8 +25,17 @@ export function monthRange(value){
   return {start:`${value}-01`,end:`${value}-${pad2(last)}`};
 }
 
+function localDateKey(date=new Date()){
+  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+}
+
 function localMonthKey(date=new Date()){
   return `${date.getFullYear()}-${pad2(date.getMonth()+1)}`;
+}
+
+export function recentRange(end=localDateKey()){
+  if(!validDateKey(end))throw new Error("invalid end date");
+  return {start:shiftDateKey(end,-29),end};
 }
 
 function parseDateKey(value){
@@ -64,41 +75,50 @@ function ensureStyle(){
   document.head.appendChild(link);
 }
 
+function updateLegacyHistoryShell(view){
+  const subtitle=view.querySelector(".page-sub");
+  if(subtitle)subtitle.textContent="查看最近记录，或按月份回看。";
+
+  // app.js still binds these legacy actions during startup. Keep their DOM mounts hidden until
+  // the app-shell extraction removes those obsolete handlers; History itself no longer exposes them.
+  const tools=view.querySelector(".history-tools");
+  if(tools){
+    tools.hidden=true;
+    tools.setAttribute("aria-hidden","true");
+  }
+}
+
 function ensureBrowser(){
   const view=$("historyView"),grid=$("historyGrid");
   if(!view||!grid)return null;
+  updateLegacyHistoryShell(view);
+
   let browser=$("historyBrowser");
   if(browser)return browser;
 
   browser=document.createElement("section");
   browser.id="historyBrowser";
-  browser.className="history-browser card";
+  browser.className="history-browser";
+  browser.setAttribute("aria-label","历史记录浏览范围");
   browser.innerHTML=`
-    <div class="history-browser-head">
-      <div>
-        <small>按月浏览</small>
-        <b id="historyMonthLabel"></b>
-      </div>
-      <button type="button" class="secondary history-this-month" data-history-this-month>本月</button>
-    </div>
+    <button type="button" class="history-recent" data-history-recent aria-pressed="true">最近30天</button>
+    <div class="history-range-divider" aria-hidden="true"></div>
     <div class="history-month-nav">
       <button type="button" class="history-arrow" data-history-shift="-1" aria-label="上个月">‹</button>
-      <input id="historyMonthPicker" type="month" aria-label="选择年月">
+      <input id="historyMonthPicker" type="month" aria-label="选择月份">
       <button type="button" class="history-arrow" data-history-shift="1" aria-label="下个月">›</button>
-    </div>
-    <div class="history-browser-foot">
-      <span id="historyMonthSummary">读取中…</span>
     </div>`;
 
-  const tools=view.querySelector(".history-tools");
-  if(tools)tools.before(browser);else grid.before(browser);
+  grid.before(browser);
+  monthKey=localMonthKey();
+  $("historyMonthPicker").value=monthKey;
 
   browser.addEventListener("click",event=>{
     const target=event.target instanceof Element?event.target:null;
     if(!target)return;
+    if(target.closest("[data-history-recent]")){setRecent();return;}
     const shift=target.closest("[data-history-shift]");
-    if(shift){setMonth(shiftMonthKey(monthKey,Number(shift.dataset.historyShift)||0));return;}
-    if(target.closest("[data-history-this-month]"))setMonth(localMonthKey());
+    if(shift)setMonth(shiftMonthKey(monthKey,Number(shift.dataset.historyShift)||0));
   });
   $("historyMonthPicker")?.addEventListener("change",event=>{
     const value=event.target.value;
@@ -111,13 +131,29 @@ function ensureBrowser(){
   return browser;
 }
 
+function updateModeUI(){
+  const recent=document.querySelector("[data-history-recent]");
+  if(recent){
+    const active=mode==="recent";
+    recent.classList.toggle("active",active);
+    recent.setAttribute("aria-pressed",String(active));
+  }
+}
+
+function setRecent({render=true}={}){
+  mode="recent";
+  updateModeUI();
+  if(render)void renderRange();
+}
+
 function setMonth(value,{render=true}={}){
   if(!validMonthKey(value))return;
+  mode="month";
   monthKey=value;
-  const picker=$("historyMonthPicker"),label=$("historyMonthLabel");
+  const picker=$("historyMonthPicker");
   if(picker&&picker.value!==value)picker.value=value;
-  if(label)label.textContent=monthLabel(value);
-  if(render)void renderMonth();
+  updateModeUI();
+  if(render)void renderRange();
 }
 
 function switchView(name){
@@ -159,7 +195,7 @@ function renderCard(date,records,day){
       <div><b>${historyDateLabel(date)}</b></div>
       <button type="button" class="secondary" data-history-date="${escapeHTML(date)}">查看</button>
     </div>
-    <div class="history-card-meta"><span>${confirmed.length} 条已确认记录</span>${pendingText}${context}</div>
+    <div class="history-card-meta"><span>${confirmed.length} 条记录</span>${pendingText}${context}</div>
     <div class="hstats">
       <div class="hstat"><b>${sleeps}段</b><small>睡眠</small></div>
       <div class="hstat"><b>${milk?`${milk}ml`:"—"}</b><small>奶量</small></div>
@@ -168,31 +204,35 @@ function renderCard(date,records,day){
   </article>`;
 }
 
-async function renderMonth(){
-  const grid=$("historyGrid"),summary=$("historyMonthSummary");
-  if(!grid||!validMonthKey(monthKey))return;
+function activeRange(){
+  if(mode==="recent")return {...recentRange(),emptyLabel:"最近30天还没有记录",loadingLabel:"正在读取最近30天…"};
+  const range=monthRange(monthKey);
+  return {...range,emptyLabel:`${monthLabel(monthKey)}还没有记录`,loadingLabel:`正在读取${monthLabel(monthKey)}…`};
+}
+
+async function renderRange(){
+  const grid=$("historyGrid");
+  if(!grid)return;
   const token=++renderToken;
-  grid.innerHTML='<div class="history-loading">正在读取本月记录…</div>';
-  if(summary)summary.textContent="读取中…";
+  const range=activeRange();
+  grid.innerHTML=`<div class="history-loading">${range.loadingLabel}</div>`;
 
   try{
-    const {start,end}=monthRange(monthKey);
-    const [records,days]=await Promise.all([getRecordsInRange(start,end),getDaysInRange(start,end)]);
+    const [records,days]=await Promise.all([
+      getRecordsInRange(range.start,range.end),
+      getDaysInRange(range.start,range.end)
+    ]);
     if(token!==renderToken)return;
 
     const byDate=recordMap(records);
     const daysByDate=new Map(days.map(day=>[day.date,day]));
     const dates=new Set([...byDate.keys(),...days.filter(hasDayContext).map(day=>day.date)]);
     const sorted=[...dates].sort().reverse();
-    const confirmed=records.filter(r=>!r.deleted&&r.status==="confirmed").length;
-
-    if(summary)summary.textContent=sorted.length?`本月记录 ${sorted.length} 天 · ${confirmed} 条已确认记录`:`${monthLabel(monthKey)}暂无记录`;
     grid.innerHTML=sorted.length
       ?sorted.map(date=>renderCard(date,byDate.get(date)||[],daysByDate.get(date))).join("")
-      :`<div class="history-empty"><b>${monthLabel(monthKey)}还没有记录</b><span>可以切换月份，或使用“开始批量补录”补充历史数据。</span></div>`;
+      :`<div class="history-empty"><b>${range.emptyLabel}</b><span>有记录后会按日期显示在这里。</span></div>`;
   }catch(error){
     if(token!==renderToken)return;
-    if(summary)summary.textContent="读取失败";
     grid.innerHTML=`<div class="history-empty"><b>历史记录读取失败</b><span>${escapeHTML(error?.message||error)}</span></div>`;
   }
 }
@@ -201,16 +241,15 @@ function openHistory(){
   ensureStyle();
   ensureBrowser();
   switchView("history");
-  if(!monthKey){
-    const selected=$("pageDate")?.value?.slice(0,7);
-    setMonth(validMonthKey(selected)?selected:localMonthKey(),{render:false});
-  }
-  void renderMonth();
+  updateModeUI();
+  void renderRange();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function install(){
   ensureStyle();
+  const view=$("historyView");
+  if(view)updateLegacyHistoryShell(view);
   document.addEventListener("click",event=>{
     const target=event.target instanceof Element?event.target.closest('.nav button[data-view="history"]'):null;
     if(!target)return;
