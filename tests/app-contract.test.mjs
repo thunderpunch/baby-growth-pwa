@@ -20,6 +20,7 @@ async function walk(dir){
 const index=await read("index.html");
 const entry=await read("export-ipad.js");
 const sw=await read("sw.js");
+const interaction=await read("interaction-guard.css");
 
 // IDs are behavioral contracts in this no-framework PWA. Duplicate IDs can silently bind
 // handlers to the wrong node, so fail before deploy.
@@ -51,6 +52,13 @@ for(const moduleName of ["migration-v3.js","history.js","sleep-v3.js","timeline-
   assert.ok(entry.includes(`./${moduleName}`),`export-ipad.js missing boot module ${moduleName}`);
 }
 assert.doesNotMatch(entry,/sleep-ui-bridge\.js/,"runtime DOM bridge must not return to the boot chain");
+
+// iPad app chrome should not expose Safari text-selection callouts, while real editing/copy
+// surfaces must retain native selection, paste and caret behavior.
+assert.match(interaction,/-webkit-touch-callout\s*:\s*none/,"app chrome must suppress iOS long-press callouts");
+assert.match(interaction,/-webkit-user-select\s*:\s*none/,"app chrome must suppress accidental text selection");
+assert.match(interaction,/\.app\s+input[\s\S]*-webkit-touch-callout\s*:\s*default/,"inputs must restore native text interaction");
+assert.match(interaction,/\.text-selectable[\s\S]*user-select\s*:\s*text/,"copyable read-only text must have an explicit opt-in escape hatch");
 
 // Every relative ESM import in repository JavaScript must resolve to a real local file.
 const files=await walk(root);
