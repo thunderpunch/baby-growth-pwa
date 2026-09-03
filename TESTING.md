@@ -41,11 +41,14 @@ All pre-release verification checks passed.
 
 `tests/app-contract.test.mjs`
 
+`tests/ipad-layout.test.mjs`
+
 覆盖：
 
 - DOM ID 不重复；
 - Today / History / Sleep 等关键挂载存在；
 - 顶部日期控制只在 Today 激活时可见，其它页面不能出现无效全局日期选择器；
+- iPad Profile 页面在经典 1024 CSS px 横屏宽度前必须进入安全单列布局，Profile 根容器和主要列必须允许收缩，不能制造页面级横向滚动；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；
@@ -53,7 +56,8 @@ All pre-release verification checks passed.
 - `app.js` 不允许重新吸收 History、Sleep、Data I/O、SW update 的旧实现；
 - 文件选择按钮必须抑制 Android/WebKit 蓝色 tap highlight，并有自己明确的 pressed state；
 - JSON 文件分享必须先通过 `navigator.canShare({files})` 验证；不能把“有 navigator.share”误认为“支持文件附件”；
-- Android 浏览器不能直接分享 `.json` 时保留 `text/plain` 兼容传输附件，导入器允许重新选择该 `.txt`；
+- 当前正式分享/保存格式保持标准 `.json`，不生成第二种 `text/plain` 兼容附件；不支持文件 Web Share 时明确回退到标准文件保存；
+- JSON 导出在生成文件前必须执行 stringify → parse → 当前 schema 校验的自检；
 - 本地 ESM import 必须指向真实文件；
 - Service Worker `APP_SHELL` 中的文件必须真实存在；
 - iPad 应用外壳继续抑制普通文本长按 callout，同时输入/显式可复制区域保留原生文本能力。
@@ -67,7 +71,8 @@ All pre-release verification checks passed.
 - `AGENTS.md` 与 README 必须指向权威文档；
 - “代码收敛”“部署双门禁”“按自然年完整 JSON 备份”“仓库文档是长期事实源”等规则不能丢失；
 - `JSON_DATA_SCHEMA.md` 的 schemaVersion 必须和 `data-io-v3.js` 实际运行版本一致；
-- dataVersion / timeModelVersion / canonical temporal 必须有文档；
+- timeModelVersion / canonical temporal 必须有文档；
+- 当前 JSON 协议明确只维护当前结构，不恢复旧 schema 迁移兼容；
 - 已删除的 `DATA_PROTOCOL.md` 不能作为第二份过时协议重新出现；
 - Architecture / Maintenance 不能继续声称已删除 legacy sleep mounts 仍是当前结构。
 
@@ -155,7 +160,6 @@ node scripts/verify.mjs
 - 跨午夜；
 - 不完整事实；
 - 编辑后重新 canonicalize；
-- 旧数据迁移；
 - timeline point。
 
 如果 bug 是“这条记录应该显示在几点”，测试直接断言 temporal / `recordTimelineClock()` / `recordTimelineMs()`，不要只测 UI 字符串。
@@ -171,6 +175,15 @@ node scripts/verify.mjs
 - current-year label；
 - 禁止全库扫描；
 - 不恢复已经删除的重复控件。
+
+### iPad / 响应式布局
+
+至少确认：
+
+- 1024 CSS px 横屏边界；
+- Profile / Data 的主要 grid item 都允许 `min-width:0` 收缩；
+- 原生表单控件或自定义日期触发器不会撑宽 grid；
+- 不用单纯 `overflow-x:hidden` 掩盖本应消除的内容溢出。
 
 ### 模块拆分 / DOM 清理
 
@@ -196,14 +209,12 @@ node scripts/verify.mjs
 
 至少确认：
 
-- schemaVersion / dataVersion / timeModelVersion；
+- schemaVersion / timeModelVersion；
 - `JSON_DATA_SCHEMA.md` 同步更新；
 - canonical round-trip；
+- 导出文件先通过当前 schema 自校验；
 - 导入幂等；
-- migration 成功后才写版本号；
-- migration 不随意改变业务 `updatedAt`；
-- Day 不重新导出旧 `nightSleep` 事实；
-- 分享兼容只改变传输外壳，不改变 JSON 内容和 schema。
+- 当前协议不重新引入旧 schema/dataVersion 迁移层。
 
 ### 架构 / 产品原则 / 发布流程
 
@@ -217,12 +228,13 @@ node scripts/verify.mjs
 
 - 页面能启动，无白屏；
 - Today 能看到日期前后切换和“今天”，切到 History / 档案 / 数据后日期控件消失；
+- iPad 横屏进入档案页不能横向拖动整个页面；
 - 新增一条普通记录；
 - 睡眠、早安、晚安、夜醒打开/保存；
 - History 最近30天与按月切换；
 - JSON 导出/导入入口可用；
 - Android 点击“选择文件”不出现蓝色 Web 按压前景；
-- 支持文件 Web Share 的 Android 可调起系统分享；不能直接分享 JSON 的浏览器可使用兼容文本附件或明确回退为标准文件保存；
+- 支持文件 Web Share 的 Android 可调起系统分享；不支持时明确回退到标准 JSON 文件保存；
 - 长按普通 UI 不出现廉价 Web 选择菜单，输入框仍可粘贴；
 - PWA 更新后业务 JS/CSS 能看到新版。
 
