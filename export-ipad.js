@@ -19,6 +19,7 @@ if(migrated){
   location.reload();
 }else{
   await import("./sleep-v3.js");
+  await import("./sleep-ui-bridge.js");
   await import("./json-import-v2.js");
   await import("./export-v2.js");
 }
