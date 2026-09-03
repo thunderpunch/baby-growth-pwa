@@ -1,0 +1,27 @@
+name: static-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Singapore
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "checking $file"
+            node --input-type=module --check < "$file"
+          done < <(find . -type f -name '*.js' -not -path './.git/*' -print0)
+      - name: Run temporal model regression tests
+        run: node --experimental-default-type=module tests/record-model.test.mjs
