@@ -73,34 +73,25 @@
         </div>
 
         <div class="sidecol">
-          <div class="card pad">
-            <div class="card-head">
-              <div class="title-wrap">
-                <div class="ico pink">
-                  <svg viewBox="0 0 24 24"><path d="M20 12.5A7.5 7.5 0 1 1 11.5 4A6 6 0 0 0 20 12.5Z"/></svg>
-                </div>
-                <div>
-                  <div class="card-title">夜间睡眠</div>
-                  <div class="card-sub">填写事实，早醒由系统判断</div>
-                </div>
-              </div>
-            </div>
+          <button type="button" class="night-entry" data-night-morning>
+            <span class="night-entry-icon sun">☀</span>
+            <span class="night-entry-copy"><b>早安</b><small>记录最终起床并带入昨晚晚安</small></span>
+            <span class="night-entry-arrow">›</span>
+          </button>
 
+          <div id="lastNightSummary" class="last-night-summary"></div>
+
+          <button type="button" class="night-entry" data-night-goodnight>
+            <span class="night-entry-icon moon">☾</span>
+            <span class="night-entry-copy"><b>晚安</b><small>记录入睡时间与方式</small></span>
+            <span class="night-entry-arrow">›</span>
+          </button>
+
+          <div class="card pad hidden" aria-hidden="true">
             <div class="fields2">
-              <label>前一晚真正睡着
-                <div class="time-row">
-                  <input id="nightSleepAt" type="time">
-                  <button class="now-btn" data-now-target="nightSleepAt">现在</button>
-                </div>
-              </label>
-              <label>当天最终起床
-                <div class="time-row">
-                  <input id="nightWakeAt" type="time">
-                  <button class="now-btn" data-now-target="nightWakeAt">现在</button>
-                </div>
-              </label>
+              <label>前一晚真正睡着<input id="nightSleepAt" type="time" tabindex="-1"></label>
+              <label>当天最终起床<input id="nightWakeAt" type="time" tabindex="-1"></label>
             </div>
-            <div class="hint">这里按“起床所在日期”归档；跨午夜的实际日期会在数据层自动换算。</div>
           </div>
 
           <div class="card pad">
