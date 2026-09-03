@@ -4,8 +4,10 @@ const CONFIG_URL="./home-config.json";
 const DEFAULT_QUICK_RECORDS=["milk","diet","diaper","sleep"];
 const RECORD_TYPES=["sleep","milk","diet","diaper","wake","health","growth","medical","milestone","activity"];
 const REFRESH_MIN_INTERVAL_MS=30000;
+const PERIODIC_REFRESH_MS=5*60*1000;
 let lastCheckedAt=0;
 let refreshing=false;
+let currentQuickRecords=[...DEFAULT_QUICK_RECORDS];
 
 function applyManagedCopy(){
   const quickHint=document.querySelector(".quick-head small");
@@ -41,6 +43,20 @@ function sameModuleMap(a,b){
   return RECORD_TYPES.every(id=>Boolean(a?.[id])===Boolean(b?.[id]));
 }
 
+function applyQuickOrder(){
+  const bar=document.getElementById("quickbar");
+  if(!bar) return;
+  const buttons=Array.from(bar.querySelectorAll(":scope > [data-quick]"));
+  if(!buttons.length) return;
+  const byId=new Map(buttons.map(button=>[button.dataset.quick,button]));
+  const expected=currentQuickRecords.filter(id=>byId.has(id));
+  if(byId.has("more")) expected.push("more");
+  const actual=buttons.map(button=>button.dataset.quick);
+  if(expected.length!==actual.length || expected.some((id,index)=>id!==actual[index])){
+    expected.forEach(id=>bar.appendChild(byId.get(id)));
+  }
+}
+
 async function fetchRemoteConfig(){
   const response=await fetch(CONFIG_URL,{cache:"no-store",headers:{Accept:"application/json"}});
   if(!response.ok) throw new Error(`home-config ${response.status}`);
@@ -57,6 +73,9 @@ async function refreshRemoteQuickRecords({force=false}={}){
   lastCheckedAt=now;
   try{
     const cached=sanitizeQuickRecords(await getSetting("remoteQuickRecords",DEFAULT_QUICK_RECORDS));
+    currentQuickRecords=cached;
+    applyQuickOrder();
+
     let desired=cached;
     try{
       desired=await fetchRemoteConfig();
@@ -65,12 +84,15 @@ async function refreshRemoteQuickRecords({force=false}={}){
       console.warn("Remote quick-record config unavailable; using cached config",error);
     }
 
+    currentQuickRecords=desired;
     const desiredModules=moduleMap(desired);
     const currentModules=await getSetting("modules",{});
     if(!sameModuleMap(currentModules,desiredModules)){
       await setSetting("modules",desiredModules);
       location.reload();
+      return;
     }
+    applyQuickOrder();
   }finally{
     refreshing=false;
   }
@@ -79,8 +101,18 @@ async function refreshRemoteQuickRecords({force=false}={}){
 applyManagedCopy();
 refreshRemoteQuickRecords({force:true}).catch(error=>console.warn("Remote quick-record config failed",error));
 
+const quickbar=document.getElementById("quickbar");
+if(quickbar){
+  new MutationObserver(()=>applyQuickOrder()).observe(quickbar,{childList:true});
+}
+
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState!=="visible") return;
   applyManagedCopy();
   refreshRemoteQuickRecords().catch(error=>console.warn("Remote quick-record refresh failed",error));
 });
+
+setInterval(()=>{
+  if(document.visibilityState!=="visible") return;
+  refreshRemoteQuickRecords().catch(error=>console.warn("Remote quick-record periodic refresh failed",error));
+},PERIODIC_REFRESH_MS);
