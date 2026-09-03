@@ -45,11 +45,15 @@ All pre-release verification checks passed.
 
 - DOM ID 不重复；
 - Today / History / Sleep 等关键挂载存在；
+- 顶部日期控制只在 Today 激活时可见，其它页面不能出现无效全局日期选择器；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；
 - History 批量补录旧 DOM 不允许恢复；
 - `app.js` 不允许重新吸收 History、Sleep、Data I/O、SW update 的旧实现；
+- 文件选择按钮必须抑制 Android/WebKit 蓝色 tap highlight，并有自己明确的 pressed state；
+- JSON 文件分享必须先通过 `navigator.canShare({files})` 验证；不能把“有 navigator.share”误认为“支持文件附件”；
+- Android 浏览器不能直接分享 `.json` 时保留 `text/plain` 兼容传输附件，导入器允许重新选择该 `.txt`；
 - 本地 ESM import 必须指向真实文件；
 - Service Worker `APP_SHELL` 中的文件必须真实存在；
 - iPad 应用外壳继续抑制普通文本长按 callout，同时输入/显式可复制区域保留原生文本能力。
@@ -198,7 +202,8 @@ node scripts/verify.mjs
 - 导入幂等；
 - migration 成功后才写版本号；
 - migration 不随意改变业务 `updatedAt`；
-- Day 不重新导出旧 `nightSleep` 事实。
+- Day 不重新导出旧 `nightSleep` 事实；
+- 分享兼容只改变传输外壳，不改变 JSON 内容和 schema。
 
 ### 架构 / 产品原则 / 发布流程
 
@@ -208,14 +213,16 @@ node scripts/verify.mjs
 
 ## 5. 最小人工 Smoke Test
 
-自动测试通过后，涉及交互时仍建议真实 iPad/PWA 最小验证：
+自动测试通过后，涉及交互时仍建议真实 iPad/PWA 与 Android 最小验证：
 
 - 页面能启动，无白屏；
-- 日期前后切换和“今天”；
+- Today 能看到日期前后切换和“今天”，切到 History / 档案 / 数据后日期控件消失；
 - 新增一条普通记录；
 - 睡眠、早安、晚安、夜醒打开/保存；
 - History 最近30天与按月切换；
 - JSON 导出/导入入口可用；
+- Android 点击“选择文件”不出现蓝色 Web 按压前景；
+- 支持文件 Web Share 的 Android 可调起系统分享；不能直接分享 JSON 的浏览器可使用兼容文本附件或明确回退为标准文件保存；
 - 长按普通 UI 不出现廉价 Web 选择菜单，输入框仍可粘贴；
 - PWA 更新后业务 JS/CSS 能看到新版。
 
