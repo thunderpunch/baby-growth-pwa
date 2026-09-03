@@ -6,7 +6,6 @@ import "./recent-milk-template.js";
 import "./update-coordinator.js";
 import "./gesture-guard.js";
 import "./remote-quick-config.js";
-import "./sleep-method.js";
 import {runDataMigrationV2} from "./migration-v2.js";
 
 const layoutFix=document.createElement("link");
@@ -19,7 +18,7 @@ const migrated=await runDataMigrationV2();
 if(migrated){
   location.reload();
 }else{
-  await import("./sleep-v2.js");
+  await import("./sleep-v3.js");
   await import("./json-import-v2.js");
   await import("./export-v2.js");
 }
