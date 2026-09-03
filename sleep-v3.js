@@ -1,10 +1,9 @@
-import {getAllRecords,getRecord,getRecordsByDate,putRecord,getSetting,getProfile} from "./db.js";
+import {getRecord,getRecordsByDate,getRecordsInRange,putRecord,getSetting,getProfile} from "./db.js";
 
 const $=id=>document.getElementById(id);
 const SLEEP_METHODS=["自主入睡","奶睡","抱睡","拍睡","摇睡","其他"];
 let modalState=null;
 let refreshTimer=null;
-let lastPageDate="";
 let editingWakeId=null;
 let wakeSaveContext=null;
 let forcedWakeNightKey="";
@@ -94,7 +93,15 @@ function wakesForNight(records,nightKey){
   return wakes.filter(r=>!r.nightKey&&r.date===nightKey).sort((a,b)=>(a.wakeTime||"").localeCompare(b.wakeTime||""));
 }
 async function analysisForDate(pageDate){
-  const records=await getAllRecords(),bedtime=await profileBedtimeMinutes();
+  // The selected day plus the previous evening are sufficient for today's naps, overnight sleep
+  // and night wakes. Avoid scanning the complete lifetime record store on every home refresh.
+  const previousDate=shiftDateKey(pageDate,-1);
+  const [previous,current,bedtime]=await Promise.all([
+    getRecordsByDate(previousDate,{includeDeleted:false}),
+    getRecordsByDate(pageDate,{includeDeleted:false}),
+    profileBedtimeMinutes()
+  ]);
+  const records=[...previous,...current];
   const anchor=nightAnchorFor(records,pageDate);
   const inferred=anchor?[]:inferredNightForDate(records,pageDate,bedtime);
   const night=anchor?[anchor]:inferred;
@@ -115,15 +122,6 @@ async function analysisForDate(pageDate){
   const endMin=minuteOf(tpart(finalEnd));
   if(!wakeEarly&&endMin!=null&&endMin<330)inferredEarly=tpart(finalEnd);
   return {records,anchor,night,naps,uncertain,wakes,wakeEarly,inferredEarly};
-}
-async function repairLegacyNightAnchors(){
-  const records=await getAllRecords();
-  for(const r of records){
-    if(r.type!=="sleep"||r.deleted||r.nightAnchor||r.source!=="migration_v2_night_sleep")continue;
-    const nightKey=dpart(r.endDateTime)||r.date;
-    if(!nightKey)continue;
-    await putRecord({...r,nightAnchor:true,nightKey,updatedAt:new Date().toISOString()});
-  }
 }
 function ensureNightCard(){
   const input=$("nightSleepAt");if(!input)return null;
@@ -163,9 +161,8 @@ function ensureNightCard(){
   }
   return summary;
 }
-async function renderNightCard(pageDate){
+function renderNightCard(pageDate,a){
   const box=ensureNightCard();if(!box)return;
-  const a=await analysisForDate(pageDate);
   if(!a.night.length){
     box.innerHTML=`<div class="last-night-title">昨夜</div><div class="last-night-empty"><b>暂无完整记录</b><span>如果昨晚忘记点“晚安”，可直接在“早安”里补充。</span></div>`;
     return;
@@ -179,10 +176,10 @@ async function renderNightCard(pageDate){
     </div>
     <div class="last-night-facts">${first.sleepMethod?`<span>${esc(first.sleepMethod)}</span>`:""}<span>夜醒 ${a.wakes.length} 次</span>${early?`<span class="sleep-v3-warn">疑似早醒 ${early}</span>`:""}${!a.anchor?`<span>系统推测</span>`:""}</div>`;
 }
-async function patchMetrics(pageDate){
+function patchMetrics(pageDate,a){
   const metrics=$("metrics");if(!metrics)return;
   const items=Array.from(metrics.querySelectorAll(".metric"));if(items.length<4)return;
-  const a=await analysisForDate(pageDate),napMin=a.naps.reduce((s,r)=>s+(duration(r)||0),0);
+  const napMin=a.naps.reduce((s,r)=>s+(duration(r)||0),0);
   const set=(el,sel,text)=>{const n=el.querySelector(sel);if(n&&n.textContent!==text)n.textContent=text;};
   set(items[0],"b",`${a.naps.length} 觉`);set(items[0],"small","小睡");
   set(items[1],"b",napMin?fmtDuration(napMin):"—");set(items[1],"small",a.uncertain.length?`小睡总计 · ${a.uncertain.length}段待判断`:"小睡总计");
@@ -235,8 +232,9 @@ function ordinaryCandidate(){
 }
 async function findSleepConflict(candidate){
   if(duration(candidate)==null)return null;
-  const all=await getAllRecords();
-  return live(all,"sleep").find(r=>r.id!==candidate.id&&duration(r)!=null&&overlapMinutes(r,candidate)>0)||null;
+  const startDate=dpart(candidate.startDateTime)||candidate.date,endDate=dpart(candidate.endDateTime)||startDate;
+  const rows=await getRecordsInRange(startDate,endDate);
+  return live(rows,"sleep").find(r=>r.id!==candidate.id&&duration(r)!=null&&overlapMinutes(r,candidate)>0)||null;
 }
 function warning(title,lines,confirmText,onConfirm){
   const box=$("sleepV3Warning");if(!box)return;
@@ -269,7 +267,7 @@ async function saveOrdinary(){
   await persistOrdinary(c);
 }
 async function openGoodnight(){
-  const pageDate=$("pageDate")?.value||dateKey(new Date()),nightKey=shiftDateKey(pageDate,1),records=await getAllRecords();
+  const pageDate=$("pageDate")?.value||dateKey(new Date()),nightKey=shiftDateKey(pageDate,1),records=await getRecordsByDate(nightKey,{includeDeleted:false});
   const existing=nightAnchorFor(records,nightKey),defaultTime=existing?tpart(existing.startDateTime):(pageDate===dateKey(new Date())?nowClock().time:"");
   modalState={kind:"goodnight",record:existing,pageDate,nightKey};
   showModal(modalShell("晚安",
@@ -290,7 +288,7 @@ async function saveGoodnight(){
   await putRecord(record);hideModal();refreshAppDay();showToast(old.id?"晚安已更新":"晚安已记录");
 }
 async function openMorning(){
-  const pageDate=$("pageDate")?.value||dateKey(new Date()),records=await getAllRecords(),anchor=nightAnchorFor(records,pageDate);
+  const pageDate=$("pageDate")?.value||dateKey(new Date()),records=await getRecordsByDate(pageDate,{includeDeleted:false}),anchor=nightAnchorFor(records,pageDate);
   const start=tpart(anchor?.startDateTime)||"",end=tpart(anchor?.endDateTime)||(pageDate===dateKey(new Date())?nowClock().time:"");
   modalState={kind:"morning",record:anchor,pageDate,nightKey:pageDate};
   showModal(modalShell("早安",
@@ -369,18 +367,12 @@ async function persistWakeNightKey(){
   if(record&&record.nightKey!==c.nightKey)await putRecord({...record,nightKey:c.nightKey,updatedAt:new Date().toISOString()});
   wakeSaveContext=null;forcedWakeNightKey="";scheduleRefresh(80);
 }
-function decorateTimeline(){
-  document.querySelectorAll("#timeline [data-edit-id]").forEach(async btn=>{
-    const r=await getRecord(btn.dataset.editId),sub=btn.closest(".row")?.querySelector(".rowsub");if(!sub||!r)return;
-    if(r.type==="sleep"&&r.sleepMethod&&!sub.dataset.sleepV3Method){sub.dataset.sleepV3Method="1";sub.textContent=[sub.textContent,r.sleepMethod].filter(Boolean).join(" · ");}
-    if(r.type==="wake"&&r.nightKey&&!sub.dataset.sleepV3Night){sub.dataset.sleepV3Night="1";sub.textContent=[sub.textContent,`归属 ${fmtDay(r.nightKey)}昨夜`].filter(Boolean).join(" · ");}
-  });
-}
 function scheduleRefresh(delay=40){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refreshAll().catch(e=>console.warn("Sleep V3 refresh failed",e)),delay);}
 async function refreshAll(){
-  const pageDate=$("pageDate")?.value||dateKey(new Date());lastPageDate=pageDate;
-  await Promise.all([renderNightCard(pageDate),patchMetrics(pageDate)]);
-  decorateTimeline();
+  const pageDate=$("pageDate")?.value||dateKey(new Date());
+  const analysis=await analysisForDate(pageDate);
+  renderNightCard(pageDate,analysis);
+  patchMetrics(pageDate,analysis);
 }
 function bindEvents(){
   document.addEventListener("click",async e=>{
@@ -411,19 +403,16 @@ function bindEvents(){
 
     if(t.closest("#modalSave,#modalSaveContinue"))prepareWakeSave();
     if(t.closest("#modalCancel,#modalClose")){editingWakeId=null;forcedWakeNightKey="";}
-    if(t.closest("#prevDay,#nextDay,#todayBtn,[data-history-date]"))scheduleRefresh(120);
+    if(t.closest("#prevDay,#nextDay,#todayBtn,[data-history-date]"))scheduleRefresh(80);
   },true);
-  $("pageDate")?.addEventListener("change",()=>scheduleRefresh(100));
+  $("pageDate")?.addEventListener("change",()=>scheduleRefresh(40));
   const modal=$("modal");
   if(modal)new MutationObserver(()=>injectWakeNightChoice().catch(e=>console.warn("Wake night choice failed",e)))
     .observe(modal,{subtree:true,childList:true,attributes:true,attributeFilter:["class"]});
-  const timeline=$("timeline");
-  if(timeline)new MutationObserver(()=>scheduleRefresh(70)).observe(timeline,{childList:true,subtree:true});
-  setInterval(()=>{const d=$("pageDate")?.value||"";if(d&&d!==lastPageDate)scheduleRefresh(0);},1500);
 }
 
 async function init(){
-  injectStyle();ensureModal();ensureNightCard();await repairLegacyNightAnchors();bindEvents();scheduleRefresh(120);
+  injectStyle();ensureModal();ensureNightCard();bindEvents();scheduleRefresh(40);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>init().catch(console.error),{once:true});
 else init().catch(console.error);
