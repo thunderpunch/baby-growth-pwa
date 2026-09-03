@@ -6,7 +6,7 @@
 - 所有记录使用同一套时间事实模型，不再由每个 UI 模块自行解释时间。
 - `date` 只承担 IndexedDB 的“页面/业务归档桶”索引职责；排序、区间计算、重叠判断使用 canonical temporal 数据。
 - 迁移与用户编辑分离：结构迁移不得修改 `updatedAt`。
-- 可见页面结构尽量由初始 DOM 直接表达，不靠运行时 DOM 搬运形成最终布局。
+- 可见页面结构尽量由初始 DOM 或单一页面控制器直接表达，不靠兼容层反复搬运形成最终布局。
 
 ## 模块边界
 
@@ -64,6 +64,18 @@ IndexedDB `DB_VERSION` 仍为 1；当前没有新增 object store/index。
 - 夜醒按真实夜醒时间。
 - 一次按日 IndexedDB 查询处理当前流水，不再逐行读取记录。
 
+### `history.js`
+长期历史浏览控制器。
+
+- 以 `YYYY-MM` 作为浏览单位，年份始终显式存在于导航语义中。
+- 上月 / 下月跨年由同一套月份运算处理，例如 `2026-12 → 2027-01`。
+- 每次只通过 `getRecordsInRange()` / `getDaysInRange()` 读取可见月份，不扫描整个历史库。
+- 不再限制“最近 30 个有记录日期”；多年数据仍可按月定位。
+- 日期跳转复用 Today 页已有的 `pageDate` 入口，不复制当天加载逻辑。
+- `tests/history.test.mjs` 覆盖跨年、闰年与范围查询回归。
+
+当前旧 `app.js::renderHistory()` 已不再作为导航入口使用，应视为待删除死代码；禁止继续向其中增加功能。物理删除将在 `app.js` 拆分时完成。
+
 ### `data-io-v3.js`
 统一数据 I/O：
 
@@ -79,6 +91,7 @@ IndexedDB `DB_VERSION` 仍为 1；当前没有新增 object store/index。
 
 - 默认静态 UI 允许先显示；
 - 独立 feature 模块并行加载；
+- History 控制器在启动阶段注册，但只有进入 History 时才查询月数据；
 - migration 完成后再启动依赖 canonical 数据的 sleep/timeline projection；
 - 不再加载 `sleep-ui-bridge.js`。
 
@@ -117,8 +130,9 @@ JSON 1.2.0 不再输出这些重复字段。
 下一阶段可删除：
 
 - `app.js` 内旧 sleep modal 分支
+- `app.js` 内旧 `renderHistory()` 死代码
 - `day.nightSleep` 相关死代码
 - legacy 时间字段读取
 - 隐藏 legacy sleep 挂载点
 
-随后可把 `app.js` 按职责拆为：`today-controller / record-dialogs / history / profile / context / app-shell`，而无需再次改变数据模型。
+随后可把 `app.js` 剩余职责继续拆为：`today-controller / record-dialogs / profile / context / app-shell`，而无需再次改变数据模型。
