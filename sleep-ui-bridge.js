@@ -40,20 +40,21 @@ function structureNightCard(){
     const goodnight=entries.querySelector("[data-night-goodnight]");
     const morning=entries.querySelector("[data-night-morning]");
     if(goodnight&&morning){
-      const tonight=document.createElement("section");
-      tonight.className="night-sleep-section tonight";
-      tonight.innerHTML='<div class="night-sleep-section-title">今晚</div>';
-      tonight.appendChild(goodnight);
-      const last=document.createElement("section");
-      last.className="night-sleep-section last-night";
-      last.innerHTML='<div class="night-sleep-section-title">昨夜</div>';
-      last.appendChild(morning);
-      entries.replaceChildren(tonight,last);
+      const morningBlock=document.createElement("section");
+      morningBlock.className="night-sleep-section morning-block";
+      morningBlock.appendChild(morning);
+      if(summary)morningBlock.appendChild(summary);
+
+      const goodnightBlock=document.createElement("section");
+      goodnightBlock.className="night-sleep-section goodnight-block";
+      goodnightBlock.appendChild(goodnight);
+
+      entries.replaceChildren(morningBlock,goodnightBlock);
       entries.dataset.sectioned="1";
     }
   }
-  const last=entries.querySelector(".night-sleep-section.last-night");
-  if(last&&summary&&summary.parentElement!==last)last.appendChild(summary);
+  const morningBlock=entries.querySelector(".night-sleep-section.morning-block");
+  if(morningBlock&&summary&&summary.parentElement!==morningBlock)morningBlock.appendChild(summary);
 }
 
 async function decorateTimeline(){
@@ -98,8 +99,6 @@ function init(){
   scheduleDecorate(0);
   const timeline=$("timeline");
   if(timeline)new MutationObserver(()=>scheduleDecorate(30)).observe(timeline,{childList:true,subtree:true});
-  const nightRoot=$("nightSleepAt")?.closest(".card.pad");
-  if(nightRoot)new MutationObserver(()=>structureNightCard()).observe(nightRoot,{childList:true,subtree:true});
 }
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
