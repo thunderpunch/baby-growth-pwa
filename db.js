@@ -1,3 +1,5 @@
+import {canonicalizeRecord} from "./record-model.js";
+
 const DB_NAME = "baby-growth-tracker";
 const DB_VERSION = 1;
 const STORES = {
@@ -92,8 +94,11 @@ export async function getAllProfiles(){
   return all.sort((a,b)=>a.effectiveFrom.localeCompare(b.effectiveFrom));
 }
 
+// All record writes cross this boundary. Domain/UI modules may keep their convenient
+// form fields, but IndexedDB always receives the canonical temporal projection too.
 export async function putRecord(record){
-  return tx([STORES.records],"readwrite",({records})=>records.put(record));
+  const normalized=canonicalizeRecord(record);
+  return tx([STORES.records],"readwrite",({records})=>records.put(normalized));
 }
 export async function getRecord(id){
   const db=await openDB();
@@ -160,7 +165,7 @@ export async function replaceAllData(snapshot){
 
     (snapshot.settings||[]).forEach(x=>tr.objectStore(STORES.settings).put(x));
     (snapshot.profiles||[]).forEach(x=>tr.objectStore(STORES.profiles).put(x));
-    (snapshot.records||[]).forEach(x=>tr.objectStore(STORES.records).put(x));
+    (snapshot.records||[]).forEach(x=>tr.objectStore(STORES.records).put(canonicalizeRecord(x)));
     (snapshot.days||[]).forEach(x=>tr.objectStore(STORES.days).put(x));
 
     tr.oncomplete=resolve;
