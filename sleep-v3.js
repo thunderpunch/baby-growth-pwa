@@ -93,8 +93,6 @@ function wakesForNight(records,nightKey){
   return wakes.filter(r=>!r.nightKey&&r.date===nightKey).sort((a,b)=>(a.wakeTime||"").localeCompare(b.wakeTime||""));
 }
 async function analysisForDate(pageDate){
-  // The selected day plus the previous evening are sufficient for today's naps, overnight sleep
-  // and night wakes. Avoid scanning the complete lifetime record store on every home refresh.
   const previousDate=shiftDateKey(pageDate,-1);
   const [previous,current,bedtime]=await Promise.all([
     getRecordsByDate(previousDate,{includeDeleted:false}),
@@ -123,46 +121,8 @@ async function analysisForDate(pageDate){
   if(!wakeEarly&&endMin!=null&&endMin<330)inferredEarly=tpart(finalEnd);
   return {records,anchor,night,naps,uncertain,wakes,wakeEarly,inferredEarly};
 }
-function ensureNightCard(){
-  const input=$("nightSleepAt");if(!input)return null;
-  const card=input.closest(".card.pad");if(!card)return null;
-  card.dataset.nightSleepV3="1";
-  const title=card.querySelector(".card-title"),sub=card.querySelector(".card-sub");
-  if(title)title.textContent="夜间睡眠";
-  if(sub)sub.textContent="晚安记录入睡，早安完成整夜睡眠";
-  input.closest(".fields2")?.classList.add("sleep-v3-old-hidden");
-  card.querySelectorAll("[data-sleep-method-night]").forEach(x=>x.classList.add("sleep-v3-old-hidden"));
-  card.querySelectorAll(".hint").forEach(x=>x.classList.add("sleep-v3-old-hidden"));
-
-  let entries=$("nightSleepEntries");
-  if(!entries){
-    entries=document.createElement("div");
-    entries.id="nightSleepEntries";
-    entries.className="night-sleep-entries";
-    entries.innerHTML=`
-      <button type="button" class="night-entry" data-night-goodnight>
-        <span class="night-entry-icon moon">☾</span>
-        <span class="night-entry-copy"><b>晚安</b><small>记录入睡时间与方式</small></span>
-        <span class="night-entry-arrow">›</span>
-      </button>
-      <button type="button" class="night-entry" data-night-morning>
-        <span class="night-entry-icon sun">☀</span>
-        <span class="night-entry-copy"><b>早安</b><small>记录最终起床并带入昨晚晚安</small></span>
-        <span class="night-entry-arrow">›</span>
-      </button>`;
-    input.closest(".fields2")?.insertAdjacentElement("afterend",entries);
-  }
-  let summary=$("lastNightSummary");
-  if(!summary){
-    summary=document.createElement("div");
-    summary.id="lastNightSummary";
-    summary.className="last-night-summary";
-    entries.insertAdjacentElement("afterend",summary);
-  }
-  return summary;
-}
 function renderNightCard(pageDate,a){
-  const box=ensureNightCard();if(!box)return;
+  const box=$("lastNightSummary");if(!box)return;
   if(!a.night.length){
     box.innerHTML=`<div class="last-night-title">昨夜</div><div class="last-night-empty"><b>暂无完整记录</b><span>如果昨晚忘记点“晚安”，可直接在“早安”里补充。</span></div>`;
     return;
@@ -412,7 +372,7 @@ function bindEvents(){
 }
 
 async function init(){
-  injectStyle();ensureModal();ensureNightCard();bindEvents();scheduleRefresh(40);
+  injectStyle();ensureModal();bindEvents();scheduleRefresh(40);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>init().catch(console.error),{once:true});
 else init().catch(console.error);
