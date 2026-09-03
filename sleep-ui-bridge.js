@@ -31,30 +31,23 @@ function sleepLikeRow(edit){
   return main.startsWith("睡眠 ·")||main.startsWith("夜间睡眠 ·");
 }
 
-function structureNightCard(){
-  const input=$("nightSleepAt"),entries=$("nightSleepEntries"),summary=$("lastNightSummary");
-  const card=input?.closest(".card.pad");
-  if(!card||!entries)return;
-  card.querySelector(".card-head")?.classList.add("sleep-v3-card-head-hidden");
-  if(entries.dataset.sectioned!=="1"){
-    const goodnight=entries.querySelector("[data-night-goodnight]");
-    const morning=entries.querySelector("[data-night-morning]");
-    if(goodnight&&morning){
-      const morningBlock=document.createElement("section");
-      morningBlock.className="night-sleep-section morning-block";
-      morningBlock.appendChild(morning);
-      if(summary)morningBlock.appendChild(summary);
+// The old night-sleep card remains only because app.js still binds its hidden fields.
+// Visually, the three sleep widgets are direct siblings in sidecol: 早安 -> 昨晚小结 -> 晚安.
+function detachSleepWidgets(){
+  const legacyInput=$("nightSleepAt");
+  const legacyCard=legacyInput?.closest(".card.pad");
+  const sidecol=legacyCard?.parentElement;
+  const entries=$("nightSleepEntries");
+  const summary=$("lastNightSummary");
+  const morning=entries?.querySelector("[data-night-morning]");
+  const goodnight=entries?.querySelector("[data-night-goodnight]");
+  if(!legacyCard||!sidecol||!morning||!summary||!goodnight)return false;
 
-      const goodnightBlock=document.createElement("section");
-      goodnightBlock.className="night-sleep-section goodnight-block";
-      goodnightBlock.appendChild(goodnight);
-
-      entries.replaceChildren(morningBlock,goodnightBlock);
-      entries.dataset.sectioned="1";
-    }
-  }
-  const morningBlock=entries.querySelector(".night-sleep-section.morning-block");
-  if(morningBlock&&summary&&summary.parentElement!==morningBlock)morningBlock.appendChild(summary);
+  if(morning.parentElement!==sidecol)sidecol.insertBefore(morning,legacyCard);
+  if(summary.parentElement!==sidecol)sidecol.insertBefore(summary,legacyCard);
+  if(goodnight.parentElement!==sidecol)sidecol.insertBefore(goodnight,legacyCard);
+  legacyCard.classList.add("sleep-v3-legacy-card");
+  return true;
 }
 
 async function decorateTimeline(){
@@ -95,7 +88,7 @@ document.addEventListener("click",event=>{
 },true);
 
 function init(){
-  structureNightCard();
+  detachSleepWidgets();
   scheduleDecorate(0);
   const timeline=$("timeline");
   if(timeline)new MutationObserver(()=>scheduleDecorate(30)).observe(timeline,{childList:true,subtree:true});
