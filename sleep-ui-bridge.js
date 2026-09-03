@@ -47,6 +47,7 @@ function detachSleepWidgets(){
   if(summary.parentElement!==sidecol)sidecol.insertBefore(summary,legacyCard);
   if(goodnight.parentElement!==sidecol)sidecol.insertBefore(goodnight,legacyCard);
   legacyCard.classList.add("sleep-v3-legacy-card");
+  legacyCard.style.display="none";
   return true;
 }
 
