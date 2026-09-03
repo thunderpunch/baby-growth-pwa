@@ -37,6 +37,7 @@ try{
     import("./update-coordinator.js"),
     import("./gesture-guard.js"),
     import("./remote-quick-config.js"),
+    import("./history.js"),
     import("./migration-v3.js")
   ];
   const results=await Promise.all(bootModules);
