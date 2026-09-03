@@ -35,9 +35,16 @@ function weekdayCN(value){
   return ["周日","周一","周二","周三","周四","周五","周六"][parseDateKey(value).getDay()];
 }
 
-function monthLabel(value){
+export function monthLabel(value,currentYear=new Date().getFullYear()){
   const [year,month]=value.split("-").map(Number);
-  return `${year}年 ${month}月`;
+  return year===Number(currentYear)?`${month}月`:`${year}年 ${month}月`;
+}
+
+export function historyDateLabel(value,currentYear=new Date().getFullYear()){
+  const d=parseDateKey(value);
+  const year=d.getFullYear();
+  const prefix=year===Number(currentYear)?"":`${year}年 `;
+  return `${prefix}${d.getMonth()+1}月${d.getDate()}日 · ${weekdayCN(value)}`;
 }
 
 function escapeHTML(value=""){
@@ -81,7 +88,6 @@ function ensureBrowser(){
     </div>
     <div class="history-browser-foot">
       <span id="historyMonthSummary">读取中…</span>
-      <label class="history-date-jump">跳到日期 <input id="historyJumpDate" type="date"><button type="button" class="secondary" data-history-jump>查看</button></label>
     </div>`;
 
   const tools=view.querySelector(".history-tools");
@@ -92,11 +98,7 @@ function ensureBrowser(){
     if(!target)return;
     const shift=target.closest("[data-history-shift]");
     if(shift){setMonth(shiftMonthKey(monthKey,Number(shift.dataset.historyShift)||0));return;}
-    if(target.closest("[data-history-this-month]")){setMonth(localMonthKey());return;}
-    if(target.closest("[data-history-jump]")){
-      const date=$("historyJumpDate")?.value;
-      if(date)openDate(date);
-    }
+    if(target.closest("[data-history-this-month]"))setMonth(localMonthKey());
   });
   $("historyMonthPicker")?.addEventListener("change",event=>{
     const value=event.target.value;
@@ -150,12 +152,11 @@ function renderCard(date,records,day){
   const sleeps=confirmed.filter(r=>r.type==="sleep").length;
   const milk=confirmed.filter(r=>r.type==="milk").reduce((sum,r)=>sum+(Number(r.amount)||0),0);
   const diapers=confirmed.filter(r=>r.type==="diaper").length;
-  const d=parseDateKey(date);
   const context=hasDayContext(day)?`<span class="history-context-mark">有备注</span>`:"";
   const pendingText=pending?`<span class="history-pending-mark">${pending} 条待确认</span>`:"";
   return `<article class="history-card">
     <div class="history-top">
-      <div><small>${date.slice(0,4)}年</small><b>${d.getMonth()+1}月${d.getDate()}日 · ${weekdayCN(date)}</b></div>
+      <div><b>${historyDateLabel(date)}</b></div>
       <button type="button" class="secondary" data-history-date="${escapeHTML(date)}">查看</button>
     </div>
     <div class="history-card-meta"><span>${confirmed.length} 条已确认记录</span>${pendingText}${context}</div>
