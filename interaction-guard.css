@@ -7,3 +7,23 @@ html,body,.app{
 button,input,select,textarea,a,label{
   touch-action:manipulation;
 }
+
+/* App chrome should behave like a native surface on touch devices: long-pressing labels,
+   cards or buttons must not open Safari's text-selection/copy callout. */
+.app,
+.app *{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
+/* Real editing/copy surfaces explicitly opt back into normal WebKit text interaction. */
+.app input,
+.app textarea,
+.app [contenteditable="true"],
+.app .text-selectable,
+.app .text-selectable *{
+  -webkit-touch-callout:default;
+  -webkit-user-select:text;
+  user-select:text;
+}
