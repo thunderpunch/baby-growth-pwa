@@ -1,0 +1,19 @@
+{
+  "name": "宝宝成长记录",
+  "short_name": "宝宝记录",
+  "description": "离线记录宝宝睡眠、吃奶、饮食、尿布与成长信息。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5f9",
+  "theme_color": "#d77fa2",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icons/baby-girl.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
