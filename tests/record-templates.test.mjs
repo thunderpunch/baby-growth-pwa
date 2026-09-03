@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {recentDateKeys,templateSourceLabel} from "../record-templates.js";
+import {recentDateKeys,settledConfirmedOfType,templateSourceLabel} from "../record-templates.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const [source,app,entry,sw]=await Promise.all([
@@ -18,8 +18,32 @@ assert.equal(templateSourceLabel("2026-09-02","2026-09-03"),"昨天");
 assert.equal(templateSourceLabel("2026-09-01","2026-09-03"),"前天");
 assert.equal(templateSourceLabel("2026-08-31","2026-09-03"),"大前天");
 
+const confirmedMilk=(id,time)=>({id,type:"milk",status:"confirmed",deleted:false,time});
+const pendingMilk=(id,deleted=false)=>({id,type:"milk",status:"pending",deleted,source:"recent_milk_template"});
+assert.deepEqual(
+  settledConfirmedOfType([confirmedMilk("m1","08:00"),confirmedMilk("m2","12:00")],"milk").map(record=>record.id),
+  ["m1","m2"],
+  "a day whose milk set is fully resolved may become the next template source"
+);
+assert.deepEqual(
+  settledConfirmedOfType([confirmedMilk("m1","08:00"),pendingMilk("m2")],"milk"),
+  [],
+  "partially confirmed milk templates must not propagate a half-finished day"
+);
+assert.deepEqual(
+  settledConfirmedOfType([confirmedMilk("m1","08:00"),pendingMilk("m2",true)],"milk").map(record=>record.id),
+  ["m1"],
+  "a skipped/deleted pending milk no longer blocks the confirmed final fact set"
+);
+assert.deepEqual(
+  settledConfirmedOfType([pendingMilk("m1",true)],"milk"),
+  [],
+  "a day with every suggested milk skipped must not become a future source"
+);
+
 assert.match(source,/const\s+MILK_LOOKBACK_DAYS\s*=\s*3/,"milk autofill window must remain three days");
-assert.match(source,/findNearestConfirmed\(date,"milk",MILK_LOOKBACK_DAYS\)/,"milk autofill must select the nearest confirmed milk day inside the window");
+assert.match(source,/findNearestSettledConfirmed\(date,"milk",MILK_LOOKBACK_DAYS\)/,"milk autofill must select the nearest fully resolved confirmed milk day inside the window");
+assert.match(source,/getRecordsByDate\(sourceDate,\{includeDeleted:true\}\)/,"source resolution must see unresolved and skipped pending milk without scanning lifetime history");
 assert.match(source,/confirmedOfType\(current,"milk"\)/,"only existing milk should suppress milk autofill; other record types must not block it");
 assert.match(source,/async function ensureMilkTemplates[\s\S]*async function ensureDietTemplates/,"milk and diet template policies must remain independent");
 assert.doesNotMatch(source,/getAllRecords/,"template generation must never scan lifetime record history");
