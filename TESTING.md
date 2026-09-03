@@ -45,6 +45,8 @@ All pre-release verification checks passed.
 
 `tests/date-picker.test.mjs`
 
+`tests/record-templates.test.mjs`
+
 覆盖：
 
 - DOM ID 不重复；
@@ -53,6 +55,8 @@ All pre-release verification checks passed.
 - iPad Profile 页面在经典 1024 CSS px 横屏宽度前必须进入安全单列布局，Profile 根容器和主要列必须允许收缩，不能制造页面级横向滚动；
 - 自定义日期选择器固定渲染 6 周 / 42 格，5 周月和 6 周月切换不能改变面板高度；
 - 日期选择器显示可直接选择的前后月日期，支持 iPad 左右滑动切月，并让上月 / 下月 / 今天动作遵守输入的 min/max；
+- 吃奶自动模板只看当天是否已有吃奶，不得被尿布、辅食、睡眠等其它记录阻断；最多回看 3 个自然日并取最近一个有确认吃奶的日期；
+- 奶和饮食模板策略独立，模板生成不得使用 `getAllRecords()` 全历史扫描，也不得恢复 DOM 监听桥；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；
@@ -98,6 +102,7 @@ All pre-release verification checks passed.
 - 一次 refresh 只做一次当天 analysis；
 - Timeline 一次按日查询，不逐行 `getRecord()`；
 - observer 不监听会被自身 projection 修改的深层 DOM；
+- 待确认模板只能做有限日期范围查询，不能回到 lifetime `getAllRecords()`；
 - 代码类资源在线时优先获取/重新验证网络新版本，离线才回退缓存；
 - `home-config.json` 保持 network-first；
 - 稳定图标等资源可 cache-first。
@@ -167,6 +172,19 @@ node scripts/verify.mjs
 - timeline point。
 
 如果 bug 是“这条记录应该显示在几点”，测试直接断言 temporal / `recordTimelineClock()` / `recordTimelineMs()`，不要只测 UI 字符串。
+
+### 待确认模板 / 吃奶自动填充
+
+至少覆盖：
+
+- 当天有已确认吃奶时不生成；
+- 当天只有其它类型记录时仍允许生成吃奶模板；
+- 昨天无吃奶、前天有吃奶时能找到前天；
+- 最多回看 3 个自然日，并正确跨月 / 跨年；
+- 多个历史日期都有吃奶时只取最近一个日期；
+- 奶与饮食模板互不阻断；
+- 用户已经处理过当天模板后不重复生成；
+- 禁止 `getAllRecords()` 与 DOM 事件桥接。
 
 ### History
 
@@ -238,6 +256,7 @@ node scripts/verify.mjs
 - Today 能看到日期前后切换和“今天”，切到 History / 档案 / 数据后日期控件消失；
 - iPad 横屏进入档案页不能横向拖动整个页面；
 - 打开日期选择器，在不同月份之间切换时面板高度保持稳定；左右滑动能切月，前后月淡化日期可以直接选择；
+- 当天没有吃奶时，昨天没记录但前天有记录，首页应出现来自前天的吃奶待确认模板；当天已有尿布/辅食等其它记录也不能阻止它；
 - 新增一条普通记录；
 - 睡眠、早安、晚安、夜醒打开/保存；
 - History 最近30天与按月切换；
