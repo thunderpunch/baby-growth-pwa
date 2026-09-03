@@ -47,6 +47,8 @@ node --experimental-default-type=module tests/app-contract.test.mjs
 - 首页关键挂载点必须存在；
 - `app.js` / `export-ipad.js` 必须以 module 加载；
 - 初始化入口不能因为数据迁移主动 `location.reload()` 造成二次启动；
+- 默认内容允许首帧显示，启动流程禁止用整页 `visibility:hidden` / `display:none` 制造空白过渡；
+- `app-ready` 必须在任何异步 feature hydration 之前已经成立；
 - 关键启动模块必须仍在 boot chain；
 - 所有本地 ESM import 必须指向真实文件；
 - Service Worker `APP_SHELL` 中每个缓存文件都必须真实存在。
@@ -119,7 +121,9 @@ node scripts/verify.mjs
 - import 是否都存在；
 - 是否新增不必要的 `location.reload()`；
 - 是否产生重复 DOM ID；
-- 是否新增运行时 DOM 搬运/重复初始化。
+- 是否新增运行时 DOM 搬运/重复初始化；
+- 是否出现 `默认内容 → 空白 → 实际内容`；
+- 默认内容可以先显示，异步数据应在原位置渐进更新，不允许靠隐藏整页等待初始化完成。
 
 ### 修改 Service Worker / 新增删除资源文件
 
@@ -141,14 +145,14 @@ node scripts/verify.mjs
 
 自动测试通过后，涉及首页交互时仍建议在真实浏览器做一次最小检查：
 
-1. 刷新首页一次：不应看到多轮布局变化或自动再次刷新；
+1. 刷新首页一次：允许先看到默认内容，然后原位变成实际数据；**期间不能出现整页空白，也不能自动再次刷新**；
 2. 普通睡眠：弹窗只出现睡着、醒来、入睡方式、备注；
 3. 晚安：只记录今晚入睡；
 4. 早安：能带出昨晚晚安，并形成完整夜间睡眠；
 5. 流水：昨夜睡眠按最终醒来时间排序；
 6. 夜醒：昨晚/今晚归属能正确保存；
 7. 切换前一天/后一天后，摘要与流水同步更新；
-8. PWA 刷新后结构不闪烁、不层层叠加。
+8. PWA 刷新过程中不应出现 `默认 → 空白 → 实际`，也不应层层重排可见结构。
 
 人工 smoke 主要验证浏览器 DOM、视觉和真实 IndexedDB 联动，不能替代数据单测；数据单测也不能完全替代浏览器 smoke。
 
@@ -170,6 +174,7 @@ node scripts/verify.mjs
 - 旧睡眠弹窗抢事件；
 - MutationObserver 自触发；
 - 页面刷新层层变形；
+- `默认内容 → 空白 → 实际内容`；
 - migration 后再次 reload；
 - Service Worker 缓存引用旧文件；
 
