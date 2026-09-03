@@ -23,6 +23,8 @@ const sleep=await read("sleep-v3.js");
 const sleepCss=await read("sleep-v3.css");
 const styles=await read("styles.css");
 const dataIo=await read("data-io-v3.js");
+const datePicker=await read("date-picker.js");
+const datePickerCss=await read("date-picker.css");
 const entry=await read("export-ipad.js");
 const sw=await read("sw.js");
 const interaction=await read("interaction-guard.css");
@@ -51,6 +53,16 @@ assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"inde
 assert.match(styles,/body:not\(:has\(#todayView\.active\)\)\s+\.date-nav\s*\{\s*display:none/,"date navigation must be hidden outside Today");
 assert.match(styles,/body:has\(#todayView\.active\)\s+\.date-nav\s*\{\s*display:flex/,"date navigation must be visible on Today");
 
+// All date inputs use the custom calendar. Native iPad date controls have intrinsic widths that
+// can overflow narrow grid cells, so the original input must be hidden after enhancement and the
+// visible trigger must be explicitly shrinkable.
+assert.match(datePicker,/DATE_INPUT_SELECTOR=['"]input\[type=\\?["']date\\?["']\]['"]/,"custom date picker must target every date input");
+assert.match(datePicker,/new\s+MutationObserver/,"custom date picker must enhance dynamically inserted modal date inputs");
+assert.match(datePicker,/dispatchEvent\(new Event\(["']change["']/,"custom date picker must preserve existing change handlers");
+assert.match(datePickerCss,/data-custom-date-hidden=["']1["'][^}]*display:none!important/,"native date input must be removed from layout after enhancement");
+assert.match(datePickerCss,/\.custom-date-trigger\{[\s\S]*min-width:0[\s\S]*max-width:100%/,"custom date trigger must be shrinkable inside iPad layouts");
+assert.match(datePickerCss,/\.date-nav \.custom-date-trigger-compact\{[\s\S]*max-width:25vw/,"top date trigger must have an explicit compact width cap");
+
 // History is owned by history.js. Removed backfill UI and legacy shell mounts must not return.
 assert.doesNotMatch(index,/history-tools|连续补历史|开始批量补录/,"obsolete History backfill shell must stay physically removed");
 
@@ -68,18 +80,20 @@ assert.doesNotMatch(app,/navigator\.serviceWorker\.register\s*\(/,"Service Worke
 assert.doesNotMatch(app,/function\s+saveNightSleep\b/,"legacy day.nightSleep write path must not return");
 assert.doesNotMatch(app,/\bSCHEMA_VERSION\b|\bMAX_IMPORT_BYTES\b|function\s+validatePayload\b|function\s+buildExportPayload\b|function\s+handleImportFile\b|function\s+applyImport\b/,"v3 Data IO must remain the unique import/export implementation");
 
-// Native-looking file selection should not flash the browser's blue tap highlight. The Android
-// share path must verify actual file-share support and keep a text/plain transport fallback for JSON.
+// Native-looking file selection should not flash the browser's blue tap highlight. Data IO now
+// supports only the current JSON schema and shares/saves the standard file without a text fallback.
 assert.match(styles,/\.filelabel\s*\{[\s\S]*-webkit-tap-highlight-color\s*:\s*transparent/,"file picker label must suppress native blue tap highlight");
 assert.match(styles,/\.filelabel:active\s*\{[\s\S]*background:/,"file picker label must own its pressed state");
-assert.match(index,/id=["']jsonInput["'][^>]*accept=["'][^"']*\.txt/,"JSON import must accept compatibility text attachments");
 assert.match(dataIo,/function\s+canShareFile\([^)]*\)[\s\S]*navigator\.canShare/,"file share must feature-check navigator.canShare");
-assert.match(dataIo,/function\s+jsonTextShareFile\b[\s\S]*text\/plain/,"JSON sharing must provide a text/plain compatibility transport");
+assert.doesNotMatch(dataIo,/function\s+jsonTextShareFile\b|text\/plain/,"JSON sharing must not generate compatibility text attachments");
+assert.match(dataIo,/raw\.schemaVersion!==SCHEMA_VERSION/,"JSON import must require the current schema exactly");
+assert.doesNotMatch(dataIo,/schemaVersion[^\n]*1\.1\.0|dataVersion\s*:/,"legacy schema/dataVersion compatibility must stay removed");
+assert.match(dataIo,/JSON\.stringify\(payload,null,2\)[\s\S]*JSON\.parse\(text\)[\s\S]*validateIncoming\(parsed\)/,"JSON export must round-trip through current-schema validation before file creation");
 assert.doesNotMatch(dataIo,/!navigator\.canShare\s*\|\|\s*navigator\.canShare/,"missing canShare must not be treated as file-share support");
 
 // Progressive boot contract: default HTML may paint first, but feature hydration must never
 // blank the whole page or start the complete document a second time.
-assert.doesNotMatch(entry,/location\.reload\s*\(/,"export-ipad.js must not force a second boot after migration");
+assert.doesNotMatch(entry,/location\.reload\s*\(/,"export-ipad.js must not force a second boot");
 assert.doesNotMatch(entry,/style\.visibility\s*=\s*["']hidden["']/,"boot must not hide the whole document");
 assert.doesNotMatch(entry,/style\.display\s*=\s*["']none["']/,"boot must not blank the whole document");
 assert.match(entry,/document\.documentElement\.classList\.add\(["']app-ready["']\)/,"default UI must be released before awaited feature hydration");
@@ -87,9 +101,10 @@ const readyAt=entry.indexOf('classList.add("app-ready")');
 const firstAwait=entry.indexOf("await ");
 assert.ok(readyAt>=0&&(firstAwait<0||readyAt<firstAwait),"app-ready must happen before the first await");
 
-for(const moduleName of ["migration-v3.js","history.js","sleep-v3.js","timeline-v3.js","data-io-v3.js"]){
+for(const moduleName of ["date-picker.js","history.js","sleep-v3.js","timeline-v3.js","data-io-v3.js"]){
   assert.ok(entry.includes(`./${moduleName}`),`export-ipad.js missing boot module ${moduleName}`);
 }
+assert.doesNotMatch(entry,/migration-v\d|runDataMigration/,"legacy data migration must not return to the boot chain");
 assert.doesNotMatch(entry,/sleep-ui-bridge\.js/,"runtime DOM bridge must not return to the boot chain");
 
 // iPad app chrome should not expose Safari text-selection callouts, while real editing/copy
@@ -129,9 +144,9 @@ for(const item of shellEntries){
   try{ok=(await stat(path.join(root,local))).isFile();}catch{}
   assert.ok(ok,`sw.js APP_SHELL references missing file ${item}`);
 }
-for(const item of ["./history.js","./history.css"]){
+for(const item of ["./history.js","./history.css","./date-picker.js","./date-picker.css"]){
   assert.ok(shellEntries.includes(item),`Service Worker must cache ${item}`);
 }
-assert.ok(!shellEntries.some(item=>item.includes("sleep-ui-bridge.js")),"Service Worker must not cache removed sleep bridge");
+assert.ok(!shellEntries.some(item=>item.includes("migration-v")||item.includes("sleep-ui-bridge.js")),"Service Worker must not cache removed migration/bridge modules");
 
 console.log("app structure contract tests passed");
