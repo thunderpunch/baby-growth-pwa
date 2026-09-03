@@ -1,10 +1,9 @@
 .sleep-v3-old-hidden{display:none!important}
 .sleep-v3-card-head-hidden{display:none!important}
 .night-sleep-entries{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 12px}
-.night-sleep-entries[data-sectioned="1"]{grid-template-columns:1fr;gap:13px;margin:0}
+.night-sleep-entries[data-sectioned="1"]{grid-template-columns:1fr;gap:12px;margin:0}
 .night-sleep-section{display:grid;gap:8px}
 .night-sleep-section+.night-sleep-section{padding-top:12px;border-top:1px solid #eee8ef}
-.night-sleep-section-title{font-size:12px;font-weight:700;color:#8d8390;letter-spacing:.02em}
 .night-sleep-section .night-entry{width:100%}
 .night-sleep-section .last-night-title{display:none}
 .night-entry{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;min-height:62px;padding:10px 12px;border:1px solid #e8e0ea;border-radius:15px;background:#fff;color:#4b434f;text-align:left;box-shadow:0 3px 12px rgba(77,57,84,.04)}
@@ -15,8 +14,8 @@
 .night-entry-copy b{font-size:14px;line-height:1.2}
 .night-entry-copy small{font-size:11px;color:#928995;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .night-entry-arrow{font-size:22px;color:#b2a9b5;line-height:1}
-.last-night-summary{display:grid;gap:8px;padding-top:10px;border-top:1px dashed #eee8ef}
-.last-night-title{font-size:12px;font-weight:700;color:#8d8390}
+.last-night-summary{display:grid;gap:8px;padding:8px 2px 0}
+.last-night-title{display:none}
 .last-night-main{display:grid;grid-template-columns:1.45fr .8fr;gap:8px}
 .last-night-main>div,.last-night-empty{padding:10px 11px;border:1px solid #ebe4ec;border-radius:12px;background:#fdfbfd}
 .last-night-main small,.last-night-empty span{display:block;color:#8d8491;font-size:11px;margin-bottom:4px}
