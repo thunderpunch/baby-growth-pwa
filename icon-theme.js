@@ -5,7 +5,11 @@ let appliedVariant="";
 let toastObserver=null;
 
 function variantForSex(sex){ return VARIANTS[sex] || "neutral"; }
-function iconUrl(variant){ return `./icons/baby-${variant}.svg`; }
+function iconUrl(variant){
+  return variant==="neutral"
+    ? "./icons/baby-neutral.svg"
+    : `./icons/baby-${variant}-approved.svg`;
+}
 function manifestUrl(variant){ return variant==="neutral" ? "./manifest.webmanifest" : `./manifest-${variant}.webmanifest`; }
 
 function ensureStyle(){
@@ -45,9 +49,9 @@ function ensureTargets(){
     favicon=document.createElement("link");
     favicon.id="babyFavicon";
     favicon.rel="icon";
-    favicon.type="image/svg+xml";
     document.head.appendChild(favicon);
   }
+  favicon.type="image/svg+xml";
 
   const apple=document.getElementById("babyAppleTouchIcon") || document.querySelector('link[rel="apple-touch-icon"]');
   const manifest=document.getElementById("babyManifest") || document.querySelector('link[rel="manifest"]');
