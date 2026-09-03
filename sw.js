@@ -1,7 +1,7 @@
-const CACHE_NAME="baby-growth-pwa-v1.1.19-neutral-fastboot";
+const CACHE_NAME="baby-growth-pwa-v1.1.20-profile-icon-system";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js","./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js","./update-coordinator.js","./gesture-guard.js","./remote-quick-config.js","./sleep-method.js","./icon-theme.js","./icon-theme.css","./home-config.json","./interaction-guard.css","./db.js","./manifest.webmanifest","./manifest-girl.webmanifest","./manifest-boy.webmanifest",
-  "./icons/baby-neutral.svg","./icons/baby-girl-approved.svg","./icons/baby-boy-approved.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
+  "./icons/baby-neutral-approved.svg","./icons/baby-girl-approved.svg","./icons/baby-boy-approved.svg","./icons/icon-192.png","./icons/icon-512.png","./icons/apple-touch-icon.png"
 ];
 
 self.addEventListener("install",event=>{
@@ -65,7 +65,7 @@ self.addEventListener("fetch",event=>{
 
   const destination=event.request.destination;
   const remoteConfig=url.pathname.endsWith("/home-config.json");
-  const themedBabyIcon=/\/icons\/baby-(?:neutral|girl-approved|boy-approved)\.svg$/i.test(url.pathname);
+  const themedBabyIcon=/\/icons\/baby-(?:neutral-approved|girl-approved|boy-approved)\.svg$/i.test(url.pathname);
   const codeOrPage = event.request.mode==="navigate" ||
     ["script","style","worker","manifest"].includes(destination) ||
     /\.(?:html|js|css|webmanifest)$/i.test(url.pathname);
