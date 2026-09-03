@@ -1,14 +1,24 @@
 import {getSetting,getProfile} from "./db.js";
 
 const VARIANTS={female:"girl",male:"boy"};
+const CACHE_KEY="baby-growth-icon-sex";
 let appliedVariant="";
 let toastObserver=null;
 
+function cleanSex(sex){ return sex==="female" || sex==="male" ? sex : ""; }
+function cachedSex(){
+  try{ return cleanSex(localStorage.getItem(CACHE_KEY)||""); }catch{ return ""; }
+}
+function saveCachedSex(sex){
+  try{
+    const value=cleanSex(sex);
+    if(value) localStorage.setItem(CACHE_KEY,value);
+    else localStorage.removeItem(CACHE_KEY);
+  }catch{}
+}
 function variantForSex(sex){ return VARIANTS[sex] || "neutral"; }
 function iconUrl(variant){
-  return variant==="neutral"
-    ? "./icons/baby-neutral.svg"
-    : `./icons/baby-${variant}-approved.svg`;
+  return variant==="neutral" ? "./icons/baby-neutral.svg" : `./icons/baby-${variant}-approved.svg`;
 }
 function manifestUrl(variant){ return variant==="neutral" ? "./manifest.webmanifest" : `./manifest-${variant}.webmanifest`; }
 
@@ -59,12 +69,11 @@ function ensureTargets(){
 }
 
 function applyVariantFromSex(sex,{force=false}={}){
-  const variant=variantForSex(sex);
+  const variant=variantForSex(cleanSex(sex));
   const targets=ensureTargets();
   if(!force && appliedVariant===variant && targets.brand?.src) return;
   appliedVariant=variant;
   document.documentElement.dataset.babyIconVariant=variant;
-
   const src=iconUrl(variant);
   if(targets.brand) targets.brand.src=src;
   if(targets.profile) targets.profile.src=src;
@@ -77,11 +86,13 @@ async function savedSex(){
   const id=await getSetting("currentProfileId","");
   if(!id) return "";
   const profile=await getProfile(id);
-  return profile?.base?.sex || "";
+  return cleanSex(profile?.base?.sex || "");
 }
 
 async function syncSavedVariant(){
-  applyVariantFromSex(await savedSex(),{force:true});
+  const sex=await savedSex();
+  saveCachedSex(sex);
+  applyVariantFromSex(sex,{force:true});
 }
 
 function bindSexPreview(){
@@ -97,7 +108,7 @@ function bindSavedRefresh(){
     toastObserver=new MutationObserver(()=>{
       const text=toastText.textContent || "";
       if(text.includes("档案已保存") || text.includes("已创建新的成长阶段") || text.includes("导入完成")){
-        setTimeout(()=>syncSavedVariant().catch(error=>console.warn("Baby icon refresh failed",error)),100);
+        setTimeout(()=>syncSavedVariant().catch(error=>console.warn("Baby icon refresh failed",error)),80);
       }
     });
     toastObserver.observe(toastText,{childList:true,subtree:true,characterData:true});
@@ -111,7 +122,7 @@ function bindSavedRefresh(){
       if(!document.getElementById("profileView")?.classList.contains("active")){
         syncSavedVariant().catch(error=>console.warn("Baby icon revert failed",error));
       }
-    },150);
+    },120);
   },false);
 
   document.addEventListener("visibilitychange",()=>{
@@ -122,13 +133,19 @@ function bindSavedRefresh(){
   });
 }
 
-async function initBabyIconTheme(){
+function applyFirstFrame(){
   ensureStyle();
-  ensureTargets();
+  applyVariantFromSex(cachedSex(),{force:true});
+}
+
+async function initBabyIconTheme(){
+  applyFirstFrame();
   bindSexPreview();
   bindSavedRefresh();
   await syncSavedVariant();
 }
+
+try{ applyFirstFrame(); }catch(error){ console.warn("Baby icon first-frame apply failed",error); }
 
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",()=>initBabyIconTheme().catch(error=>console.warn("Baby icon theme init failed",error)),{once:true});
