@@ -10,7 +10,7 @@
   "lang": "zh-CN",
   "icons": [
     {
-      "src": "./icons/baby-neutral.svg",
+      "src": "./icons/baby-neutral-approved.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
