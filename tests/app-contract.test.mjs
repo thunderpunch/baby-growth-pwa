@@ -21,6 +21,8 @@ const index=await read("index.html");
 const app=await read("app.js");
 const sleep=await read("sleep-v3.js");
 const sleepCss=await read("sleep-v3.css");
+const styles=await read("styles.css");
+const dataIo=await read("data-io-v3.js");
 const entry=await read("export-ipad.js");
 const sw=await read("sw.js");
 const interaction=await read("interaction-guard.css");
@@ -44,6 +46,11 @@ assert.ok(index.indexOf('id="lastNightSummary"')<index.indexOf("data-night-goodn
 assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html must load app.js as module");
 assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"index.html must load export-ipad.js as module");
 
+// The global date control belongs to Today only. Other pages have their own range/navigation
+// semantics and must not expose a misleading global date picker.
+assert.match(styles,/body:not\(:has\(#todayView\.active\)\)\s+\.date-nav\s*\{\s*display:none/,"date navigation must be hidden outside Today");
+assert.match(styles,/body:has\(#todayView\.active\)\s+\.date-nav\s*\{\s*display:flex/,"date navigation must be visible on Today");
+
 // History is owned by history.js. Removed backfill UI and legacy shell mounts must not return.
 assert.doesNotMatch(index,/history-tools|连续补历史|开始批量补录/,"obsolete History backfill shell must stay physically removed");
 
@@ -60,6 +67,15 @@ assert.doesNotMatch(app,/function\s+openBackfillModal\b|backfillBtn|historyToday
 assert.doesNotMatch(app,/navigator\.serviceWorker\.register\s*\(/,"Service Worker registration belongs only to update-coordinator.js");
 assert.doesNotMatch(app,/function\s+saveNightSleep\b/,"legacy day.nightSleep write path must not return");
 assert.doesNotMatch(app,/\bSCHEMA_VERSION\b|\bMAX_IMPORT_BYTES\b|function\s+validatePayload\b|function\s+buildExportPayload\b|function\s+handleImportFile\b|function\s+applyImport\b/,"v3 Data IO must remain the unique import/export implementation");
+
+// Native-looking file selection should not flash the browser's blue tap highlight. The Android
+// share path must verify actual file-share support and keep a text/plain transport fallback for JSON.
+assert.match(styles,/\.filelabel\s*\{[\s\S]*-webkit-tap-highlight-color\s*:\s*transparent/,"file picker label must suppress native blue tap highlight");
+assert.match(styles,/\.filelabel:active\s*\{[\s\S]*background:/,"file picker label must own its pressed state");
+assert.match(index,/id=["']jsonInput["'][^>]*accept=["'][^"']*\.txt/,"JSON import must accept compatibility text attachments");
+assert.match(dataIo,/function\s+canShareFile\([^)]*\)[\s\S]*navigator\.canShare/,"file share must feature-check navigator.canShare");
+assert.match(dataIo,/function\s+jsonTextShareFile\b[\s\S]*text\/plain/,"JSON sharing must provide a text/plain compatibility transport");
+assert.doesNotMatch(dataIo,/!navigator\.canShare\s*\|\|\s*navigator\.canShare/,"missing canShare must not be treated as file-share support");
 
 // Progressive boot contract: default HTML may paint first, but feature hydration must never
 // blank the whole page or start the complete document a second time.
