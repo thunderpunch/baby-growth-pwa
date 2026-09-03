@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.1-atomic-boot";
+const CACHE_NAME="baby-growth-pwa-v1.3.2-progressive-boot";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
