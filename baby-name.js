@@ -3,7 +3,7 @@ import {getSetting,getProfile,putProfile} from "./db.js";
 const MAX_NAME_LENGTH=40;
 const MAX_CONTEXT_LENGTH=300;
 let fields={};
-let draft={name:"",feedingMode:"",sleepEnvironment:"",settlingMethod:""};
+let draft={name:"",sleepEnvironment:"",settlingMethod:""};
 let saved={...draft};
 let toastObserver=null;
 let titleObserver=null;
@@ -75,7 +75,6 @@ function contextField(labelText,id,placeholder,key){
 function ensureContextFields(){
   const existing=document.getElementById("profileLongTermContext");
   if(existing){
-    fields.feedingMode=document.getElementById("feedingMode");
     fields.sleepEnvironment=document.getElementById("sleepEnvironment");
     fields.settlingMethod=document.getElementById("settlingMethod");
     return existing;
@@ -95,12 +94,11 @@ function ensureContextFields(){
 
   const desc=document.createElement("div");
   desc.className="sectiondesc";
-  desc.textContent="持续一段时期的喂养与睡眠习惯。长期改变时可创建新的成长阶段。";
+  desc.textContent="持续一段时期的睡眠背景。长期改变时可创建新的成长阶段。";
 
   const grid=document.createElement("div");
   grid.className="fields2 profile-context-fields";
   grid.append(
-    contextField("喂养方式","feedingMode","例如：配方奶为主 / 混合喂养 / 母乳亲喂","feedingMode"),
     contextField("睡眠环境","sleepEnvironment","例如：同房婴儿床 / 遮光 / 白噪音","sleepEnvironment"),
     contextField("常用哄睡方式","settlingMethod","例如：抱哄后放床 / 拍睡 / 奶睡","settlingMethod")
   );
@@ -150,7 +148,6 @@ async function loadCurrentProfileExtras(){
 
   const values={
     name:clean(profile?.base?.name||"",MAX_NAME_LENGTH),
-    feedingMode:clean(profile?.stage?.feedingMode||"",MAX_CONTEXT_LENGTH),
     sleepEnvironment:clean(profile?.stage?.sleepEnvironment||"",MAX_CONTEXT_LENGTH),
     settlingMethod:clean(profile?.stage?.settlingMethod||"",MAX_CONTEXT_LENGTH)
   };
@@ -167,24 +164,23 @@ async function persistDraftProfileExtras(){
 
   const values={
     name:clean(draft.name,MAX_NAME_LENGTH),
-    feedingMode:clean(draft.feedingMode,MAX_CONTEXT_LENGTH),
     sleepEnvironment:clean(draft.sleepEnvironment,MAX_CONTEXT_LENGTH),
     settlingMethod:clean(draft.settlingMethod,MAX_CONTEXT_LENGTH)
   };
 
   const changed=
     profile.base?.name!==values.name ||
-    profile.stage?.feedingMode!==values.feedingMode ||
     profile.stage?.sleepEnvironment!==values.sleepEnvironment ||
     profile.stage?.settlingMethod!==values.settlingMethod;
 
   if(changed){
+    const nextStage={...(profile.stage||{})};
+    delete nextStage.feedingMode;
     await putProfile({
       ...profile,
       base:{...(profile.base||{}),name:values.name},
       stage:{
-        ...(profile.stage||{}),
-        feedingMode:values.feedingMode,
+        ...nextStage,
         sleepEnvironment:values.sleepEnvironment,
         settlingMethod:values.settlingMethod
       },
