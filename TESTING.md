@@ -1,218 +1,222 @@
 # 宝宝成长记录 — 验证与发布规范
 
-这份文档用于减少“发布后再由用户发现问题”的情况。
+目标：尽量让明显回归在 CI 里失败，而不是发布后由用户发现。
 
-原则：**每个真实出现过的回归问题，都尽量转成一个以后自动执行的验证项。**
+原则：每个真实出现过、且可以自动判断的问题，都尽量转成长期执行的 regression / contract。
 
-## 1. 发布前一键验证
+## 1. 一键验证
 
-本机需要 Node.js 22 或兼容版本。
-
-在仓库根目录运行：
+Node.js 22 或兼容版本：
 
 ```bash
 node scripts/verify.mjs
 ```
 
-成功时最后会输出：
+成功时：
 
 ```text
 All pre-release verification checks passed.
 ```
 
-这个命令同时也是 GitHub Actions 使用的标准，不维护第二套 CI 命令。
+本地与 GitHub Actions 使用同一命令，不维护第二套发布验证。
 
-## 2. 当前自动验证内容
+## 2. 当前 7 组自动验证
 
-### JavaScript 语法
+### 1. JavaScript syntax
 
-检查仓库中的所有 `.js` 文件能否按 ES Module 语法解析。
+所有 `.js` 文件按 ES Module 语法解析，防止模板字符串、括号、手工替换等导致启动级 SyntaxError。
 
-主要防止：
+### 2. Repository hygiene
 
-- 手工替换导致括号/模板字符串损坏；
-- 发布后浏览器直接因为 SyntaxError 无法启动。
+`tests/repository-hygiene.test.mjs`
 
-### App Structure Contract
+覆盖：
 
-执行：
+- 已删除旧文件不能重新出现；
+- 根目录运行 JS 必须从实际运行入口可达；
+- CSS 必须有真实引用；
+- 避免实验文件、孤儿模块继续堆积。
 
-```bash
-node --experimental-default-type=module tests/app-contract.test.mjs
-```
+### 3. App structure contracts
 
-当前覆盖：
+`tests/app-contract.test.mjs`
 
-- `index.html` 不允许出现重复 ID；
-- 首页关键挂载点必须存在；
-- `app.js` / `export-ipad.js` 必须以 module 加载；
-- 初始化入口不能因为数据迁移主动 `location.reload()` 造成二次启动；
-- 默认内容允许首帧显示，启动流程禁止用整页 `visibility:hidden` / `display:none` 制造空白过渡；
-- `app-ready` 必须在任何异步 feature hydration 之前已经成立；
-- 关键启动模块必须仍在 boot chain；
-- 所有本地 ESM import 必须指向真实文件；
-- Service Worker `APP_SHELL` 中每个缓存文件都必须真实存在。
+覆盖：
 
-特别说明：`cache.addAll()` 只要有一个文件不存在，整个 Service Worker install 就可能失败，所以 APP_SHELL 是发布契约，不是普通列表。
+- DOM ID 不重复；
+- Today / History / Sleep 等关键挂载存在；
+- 早安 → 昨夜摘要 → 晚安顺序固定；
+- hidden legacy sleep mounts 不允许重新出现；
+- `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；
+- History 批量补录旧 DOM 不允许恢复；
+- `app.js` 不允许重新吸收 History、Sleep、Data I/O、SW update 的旧实现；
+- 本地 ESM import 必须指向真实文件；
+- Service Worker `APP_SHELL` 中的文件必须真实存在；
+- iPad 应用外壳继续抑制普通文本长按 callout，同时输入/显式可复制区域保留原生文本能力。
 
-### Page-load Performance Contract
+### 4. Documentation contracts
 
-执行：
+`tests/documentation-contract.test.mjs`
 
-```bash
-node --experimental-default-type=module tests/performance-contract.test.mjs
-```
+覆盖：
 
-当前覆盖：
+- `AGENTS.md` 与 README 必须指向权威文档；
+- “代码收敛”“部署双门禁”“按自然年完整 JSON 备份”“仓库文档是长期事实源”等规则不能丢失；
+- `JSON_DATA_SCHEMA.md` 的 schemaVersion 必须和 `data-io-v3.js` 实际运行版本一致；
+- dataVersion / timeModelVersion / canonical temporal 必须有文档；
+- 已删除的 `DATA_PROTOCOL.md` 不能作为第二份过时协议重新出现；
+- Architecture / Maintenance 不能继续声称已删除 legacy sleep mounts 仍是当前结构。
 
-- 独立启动模块必须使用并行加载，禁止重新退化成长串 `await import()` waterfall；
-- 首页会用到的 feature CSS 要尽早发起请求，避免模块运行后才发现样式文件造成额外重排；
-- `data-io-v3.js` 属于非首屏能力，不允许阻塞“今天”页面 hydration；
-- 当前 Service Worker 版本拥有的 JS/CSS/图标等静态资源必须 cache-first，不能每次刷新都为每个资源付一次网络 RTT；
-- `home-config.json` 继续 network-first，因为它是远程控制配置；
-- 睡眠首页分析禁止正常运行时 `getAllRecords()` 全库扫描；
-- 睡眠模块禁止用 `setInterval()` 轮询日期变化；
-- 一次睡眠 refresh 只允许计算一次当天 analysis；
-- 流水 projection 使用一次按日 IndexedDB 查询，不允许每一行单独 `getRecord()`；
-- 流水 observer 只监听顶层行变化，不能被自己修改行内文字再次触发。
+文档错误会和代码错误一样阻断发布。
 
-这些测试的目标不是追求某个机器上的固定毫秒数，而是防止已经确认的**结构性性能退化**。
+### 5. Page-load performance contracts
 
-### Temporal Model Regression
+`tests/performance-contract.test.mjs`
 
-执行：
+目标是防止结构性性能退化，不追求某台机器上的固定毫秒数。
 
-```bash
-node --experimental-default-type=module tests/record-model.test.mjs
-```
+重点：
 
-当前覆盖：
+- 可并行 feature 不退化成长串 `await import()` waterfall；
+- Today 不等待 Data I/O；
+- 首屏 CSS 尽早请求；
+- Sleep 正常 refresh 不做 lifetime 全库扫描；
+- Sleep 不用 `setInterval()` 轮询日期；
+- 一次 refresh 只做一次当天 analysis；
+- Timeline 一次按日查询，不逐行 `getRecord()`；
+- observer 不监听会被自身 projection 修改的深层 DOM；
+- 代码类资源在线时优先获取/重新验证网络新版本，离线才回退缓存；
+- `home-config.json` 保持 network-first；
+- 稳定图标等资源可 cache-first。
 
-- 昨夜睡眠 `19:42 → 05:35` 在早安所在日按 `05:35` 进入流水；
-- 普通小睡按睡着时间进入流水；
-- 旧版 `date + startTime/endTime` 跨午夜数据迁移正确；
-- 夜醒跨午夜后 `resleepDate` 正确；
-- 单点事件使用统一时间模型；
-- 没有具体时刻的记录不会为了排序虚构时间；
-- canonicalize 重复执行保持幂等；
+### 6. Cross-year History regressions
+
+`tests/history.test.mjs`
+
+覆盖：
+
+- 12 月 → 1 月；
+- 1 月 → 前一年 12 月；
+- 闰年 2 月；
+- 最近30天是连续自然日范围，不是 `.slice(0,30)`；
+- History 不允许 `getAllRecords()/getAllDays()` 全库读取；
+- 今年年份可省略、非今年必须明确显示；
+- 不恢复重复的“跳到日期”控件。
+
+### 7. Temporal model regressions
+
+`tests/record-model.test.mjs`
+
+覆盖：
+
+- 夜间主睡跨午夜，例如 `19:42 → 05:35`；
+- 普通小睡流水排序；
+- 旧 `date + startTime/endTime` 数据 canonicalize；
+- wake/resleep 跨午夜；
+- 单点事件统一时间模型；
+- 无具体时刻时不虚构排序时间；
+- canonicalize 幂等；
 - JSON canonical export → import round-trip 不改变真实时间点。
 
-## 3. GitHub Actions
+## 3. GitHub Actions 与部署门禁
 
-`.github/workflows/static-check.yml` 在以下情况自动执行：
-
-- push 到 `main`；
-- Pull Request。
-
-CI 运行的就是：
+`.github/workflows/static-check.yml` 在 main push 和 PR 上执行：
 
 ```bash
 node scripts/verify.mjs
 ```
 
-**发布判断规则：**
+只有同一 HEAD 同时满足：
 
-只有同时满足下面两项，才可以说“发布完成”：
+1. `static-check` — `completed / success`
+2. `pages build and deployment` — `completed / success`
 
-1. `static-check` completed / success；
-2. `pages build and deployment` completed / success。
+才允许说“部署完成”。
 
-只提交到 main、Pages queued、Pages in_progress 都不算部署完成。
+以下都不算：
 
-## 4. 改动类型 → 必须验证什么
+- 只提交到 main；
+- static-check 还在跑；
+- Pages queued；
+- Pages in_progress；
+- CI success 但 Pages 还是旧 HEAD。
 
-### 修改时间 / 睡眠 / 夜醒 / 流水
+## 4. 改动类型对应验证
 
-至少新增或修改 `tests/record-model.test.mjs`，覆盖：
+### 时间 / Sleep / Wake / Timeline
 
-- 正常同日；
+至少检查：
+
+- 同日；
 - 跨午夜；
-- 不完整记录；
-- 旧数据迁移；
+- 不完整事实；
 - 编辑后重新 canonicalize；
-- 流水排序点。
+- 旧数据迁移；
+- timeline point。
 
-如果 bug 是“某条记录应该出现在几点”，测试必须直接断言 `recordTimelineClock()` 或 `recordTimelineMs()`，不能只测显示字符串。
+如果 bug 是“这条记录应该显示在几点”，测试直接断言 temporal / `recordTimelineClock()` / `recordTimelineMs()`，不要只测 UI 字符串。
 
-### 修改启动流程 / 模块拆分
+### History
 
-同时检查 `tests/app-contract.test.mjs` 和 `tests/performance-contract.test.mjs`。
+至少覆盖：
 
-重点检查：
+- 最近30天范围；
+- 月范围；
+- 跨年；
+- 闰年；
+- current-year label；
+- 禁止全库扫描；
+- 不恢复已经删除的重复控件。
 
-- boot module 是否仍能找到；
-- import 是否都存在；
-- 是否新增不必要的 `location.reload()`；
-- 是否产生重复 DOM ID；
-- 是否新增运行时 DOM 搬运/重复初始化；
-- 是否出现 `默认内容 → 空白 → 实际内容`；
-- 默认内容可以先显示，异步数据应在原位置渐进更新，不允许靠隐藏整页等待初始化完成；
-- 是否把可并行的模块改回串行；
-- 是否把非首屏大模块放回关键启动路径；
-- 是否重新引入全库扫描、定时轮询或每行单独 IndexedDB 查询。
+### 模块拆分 / DOM 清理
 
-### 修改 Service Worker / 新增删除资源文件
+同时看：
 
-必须运行一键验证，确保 `APP_SHELL` 不含不存在的文件。
+- `app-contract.test.mjs`
+- `repository-hygiene.test.mjs`
+- `performance-contract.test.mjs`
 
-更新缓存版本后再发布。
+旧实现被新模块取代后，优先物理删除，再把“不能回来”写进 contract。
 
-正常策略：
+### Service Worker / 缓存
 
-- 页面导航：network-first；
-- `home-config.json`：network-first；
-- 当前 SW 版本拥有的静态 app shell：cache-first；
-- 新版本由 `update-coordinator.js` 检查、激活后刷新一次。
+必须确认：
 
-### 修改 JSON / Excel / 数据结构
+- `update-coordinator.js` 仍是注册唯一 owner；
+- `APP_SHELL` 没有不存在的文件；
+- 页面/业务 JS/CSS 在线时能拿到新版本；
+- 离线仍有缓存回退；
+- 不依赖人工记忆 bump cache name 才能更新业务代码。
+
+### JSON / Excel / 数据结构
 
 至少确认：
 
-- schemaVersion / dataVersion 是否需要变化；
-- canonical JSON round-trip；
-- 旧本地数据迁移幂等；
-- migration 只有全部成功后才写版本号；
-- migration 不应把结构迁移伪装成用户修改，不随意改 `updatedAt`。
+- schemaVersion / dataVersion / timeModelVersion；
+- `JSON_DATA_SCHEMA.md` 同步更新；
+- canonical round-trip；
+- 导入幂等；
+- migration 成功后才写版本号；
+- migration 不随意改变业务 `updatedAt`；
+- Day 不重新导出旧 `nightSleep` 事实。
+
+### 架构 / 产品原则 / 发布流程
+
+更新对应仓库文档，并确保 Documentation Contract 仍通过。
+
+聊天中的重要决策如果会影响后续 Agent，不能只留在聊天里。
 
 ## 5. 最小人工 Smoke Test
 
-自动测试通过后，涉及首页交互时仍建议在真实浏览器做一次最小检查：
+自动测试通过后，涉及交互时仍建议真实 iPad/PWA 最小验证：
 
-1. 刷新首页一次：允许先看到默认内容，然后原位变成实际数据；**期间不能出现整页空白，也不能自动再次刷新**；
-2. 重复刷新一次：在已安装 Service Worker 的情况下，页面骨架和交互模块应明显更快出现，不应等待一串 JS/CSS 网络请求；
-3. 普通睡眠：弹窗只出现睡着、醒来、入睡方式、备注；
-4. 晚安：只记录今晚入睡；
-5. 早安：能带出昨晚晚安，并形成完整夜间睡眠；
-6. 流水：昨夜睡眠按最终醒来时间排序；
-7. 夜醒：昨晚/今晚归属能正确保存；
-8. 切换前一天/后一天后，摘要与流水同步更新；
-9. PWA 刷新过程中不应出现 `默认 → 空白 → 实际`，也不应层层重排可见结构。
+- 页面能启动，无白屏；
+- 日期前后切换和“今天”；
+- 新增一条普通记录；
+- 睡眠、早安、晚安、夜醒打开/保存；
+- History 最近30天与按月切换；
+- JSON 导出/导入入口可用；
+- 长按普通 UI 不出现廉价 Web 选择菜单，输入框仍可粘贴；
+- PWA 更新后业务 JS/CSS 能看到新版。
 
-人工 smoke 主要验证浏览器 DOM、视觉和真实 IndexedDB 联动，不能替代数据单测；数据单测也不能完全替代浏览器 smoke。
-
-## 6. Bug 修复规则
-
-发现 bug 时不要只改代码：
-
-1. 先定位是数据事实、projection、UI、启动、缓存中的哪一层；
-2. 能写自动测试的，先或同时写一个能复现问题的 regression case；
-3. 修复后运行 `node scripts/verify.mjs`；
-4. 等 CI success；
-5. 等 Pages success；
-6. 再宣布发布完成。
-
-对于曾经发生过的问题，例如：
-
-- `?～?`；
-- 昨夜睡眠跑到流水最后；
-- 旧睡眠弹窗抢事件；
-- MutationObserver 自触发；
-- 页面刷新层层变形；
-- `默认内容 → 空白 → 实际内容`；
-- migration 后再次 reload；
-- Service Worker 缓存引用旧文件；
-- 可并行模块被串行加载；
-- 首页分析退化为全库扫描；
-- 流水退化为逐行 IndexedDB 查询；
-
-后续如果可以用纯逻辑/结构契约描述，都应逐步加入自动验证，而不是只留在对话记忆里。
+人工 smoke 是最后保险，不替代自动 contract。
