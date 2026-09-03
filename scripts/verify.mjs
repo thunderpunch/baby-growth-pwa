@@ -45,6 +45,7 @@ runTest("repository hygiene checks","tests/repository-hygiene.test.mjs");
 
 console.log("[3/7] App structure contracts");
 runTest("app contract tests","tests/app-contract.test.mjs");
+runTest("iPad layout regression tests","tests/ipad-layout.test.mjs");
 
 console.log("[4/7] Documentation contracts");
 runTest("documentation contract tests","tests/documentation-contract.test.mjs");
