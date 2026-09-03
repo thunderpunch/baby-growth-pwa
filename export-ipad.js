@@ -16,6 +16,7 @@ ensureStylesheet("./sleep-v3.css","data-sleep-v3-style");
 ensureStylesheet("./icon-theme.css","data-baby-icon-theme");
 ensureStylesheet("./baby-name.css","data-baby-name-style");
 ensureStylesheet("./time-picker.css","data-time-picker-style");
+ensureStylesheet("./date-picker.css","data-date-picker-style");
 ensureStylesheet("./interaction-guard.css","data-interaction-guard");
 
 let dataIoPromise=null;
@@ -28,23 +29,18 @@ function loadDataIo(){
 
 try{
   // Independent boot helpers can download, parse and initialize in parallel.
-  const bootModules=[
+  await Promise.all([
     import("./icon-theme.js"),
     import("./profile-save-guard.js"),
     import("./baby-name.js"),
     import("./time-behavior.js"),
+    import("./date-picker.js"),
     import("./recent-milk-template.js"),
     import("./update-coordinator.js"),
     import("./gesture-guard.js"),
     import("./remote-quick-config.js"),
-    import("./history.js"),
-    import("./migration-v3.js")
-  ];
-  const results=await Promise.all(bootModules);
-  const {runDataMigrationV3}=results.at(-1);
-
-  // Migration is the only data dependency before the v3 projections hydrate existing records.
-  await runDataMigrationV3();
+    import("./history.js")
+  ]);
 
   // The Today DOM already contains the final sleep-action layout, so no runtime DOM bridge is needed.
   await Promise.all([
