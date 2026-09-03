@@ -19,6 +19,8 @@ async function walk(dir){
 
 const index=await read("index.html");
 const app=await read("app.js");
+const sleep=await read("sleep-v3.js");
+const sleepCss=await read("sleep-v3.css");
 const entry=await read("export-ipad.js");
 const sw=await read("sw.js");
 const interaction=await read("interaction-guard.css");
@@ -29,8 +31,11 @@ const ids=[...index.matchAll(/\bid=["']([^"']+)["']/g)].map(m=>m[1]);
 const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];
 assert.deepEqual(duplicates,[],`index.html contains duplicate ids: ${duplicates.join(", ")}`);
 
-for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","nightSleepEntries","lastNightSummary","historyView","historyGrid","contextSummary","modal","toast"]){
+for(const id of ["pageDate","quickbar","metrics","timeline","lastNightSummary","historyView","historyGrid","contextSummary","modal","toast"]){
   assert.ok(ids.includes(id),`missing required DOM mount #${id}`);
+}
+for(const id of ["nightSleepAt","nightWakeAt","nightSleepEntries","backfillBtn","historyTodayBtn"]){
+  assert.ok(!ids.includes(id),`obsolete DOM mount #${id} must stay removed`);
 }
 assert.equal((index.match(/data-night-morning/g)||[]).length,1,"Exactly one static Morning action is allowed");
 assert.equal((index.match(/data-night-goodnight/g)||[]).length,1,"Exactly one static Goodnight action is allowed");
@@ -40,7 +45,12 @@ assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html m
 assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"index.html must load export-ipad.js as module");
 
 // History is owned by history.js. Removed backfill UI and legacy shell mounts must not return.
-assert.doesNotMatch(index,/backfillBtn|historyTodayBtn|history-tools|连续补历史|开始批量补录/,"obsolete History backfill shell must stay physically removed");
+assert.doesNotMatch(index,/history-tools|连续补历史|开始批量补录/,"obsolete History backfill shell must stay physically removed");
+
+// Sleep is owned by sleep-v3.js and renders directly into the static final DOM.
+assert.doesNotMatch(sleep,/ensureNightCard|nightSleepAt|nightWakeAt|nightSleepEntries|sleep-v3-old-hidden|night-sleep-entries/,"legacy Sleep DOM compatibility must not return");
+assert.match(sleep,/\$\(["']lastNightSummary["']\)/,"sleep-v3.js must render directly into #lastNightSummary");
+assert.doesNotMatch(sleepCss,/sleep-v3-old-hidden|sleep-v3-legacy-card|night-sleep-entries/,"legacy Sleep compatibility CSS must stay deleted");
 
 // app.js is the core Today/profile controller, not a second implementation of History, Sleep,
 // Data IO or Service Worker update coordination.
