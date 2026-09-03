@@ -1,9 +1,10 @@
 import {getSetting,getProfile,putProfile} from "./db.js";
 
 const MAX_NAME_LENGTH=40;
-let nameInput=null;
-let draftName="";
-let currentSavedName="";
+const MAX_CONTEXT_LENGTH=300;
+let fields={};
+let draft={name:"",feedingMode:"",sleepEnvironment:"",settlingMethod:""};
+let saved={...draft};
 let toastObserver=null;
 let titleObserver=null;
 
@@ -16,8 +17,8 @@ function ensureStyles(){
   document.head.appendChild(link);
 }
 
-function safeName(value){
-  return String(value||"").trim().slice(0,MAX_NAME_LENGTH);
+function clean(value,max){
+  return String(value||"").trim().slice(0,max);
 }
 
 function localDateKey(d){
@@ -32,14 +33,20 @@ function weekdayCN(dateKey){
   return ["周日","周一","周二","周三","周四","周五","周六"][d.getDay()];
 }
 
-function ensureNameField(){
-  if(nameInput?.isConnected) return nameInput;
+function createTextInput(id,placeholder,maxLength,onInput){
+  const input=document.createElement("input");
+  input.id=id;
+  input.type="text";
+  input.maxLength=maxLength;
+  input.autocomplete="off";
+  input.placeholder=placeholder;
+  input.addEventListener("input",onInput);
+  return input;
+}
 
+function ensureNameField(){
   const existing=document.getElementById("babyName");
-  if(existing){
-    nameInput=existing;
-    return nameInput;
-  }
+  if(existing){ fields.name=existing; return existing; }
 
   const birthDate=document.getElementById("birthDate");
   const baseFields=birthDate?.closest(".fields2");
@@ -49,20 +56,58 @@ function ensureNameField(){
   label.className="baby-name-field";
   label.appendChild(document.createTextNode("宝宝名"));
 
-  const input=document.createElement("input");
-  input.id="babyName";
-  input.type="text";
-  input.maxLength=MAX_NAME_LENGTH;
-  input.autocomplete="off";
-  input.placeholder="例如：小满";
-  input.addEventListener("input",()=>{
-    draftName=input.value;
-  });
-
+  const input=createTextInput("babyName","例如：小满",MAX_NAME_LENGTH,()=>{draft.name=input.value;});
   label.appendChild(input);
   baseFields.insertAdjacentElement("beforebegin",label);
-  nameInput=input;
+  fields.name=input;
   return input;
+}
+
+function contextField(labelText,id,placeholder,key){
+  const label=document.createElement("label");
+  label.appendChild(document.createTextNode(labelText));
+  const input=createTextInput(id,placeholder,MAX_CONTEXT_LENGTH,()=>{draft[key]=input.value;});
+  label.appendChild(input);
+  fields[key]=input;
+  return label;
+}
+
+function ensureContextFields(){
+  const existing=document.getElementById("profileLongTermContext");
+  if(existing){
+    fields.feedingMode=document.getElementById("feedingMode");
+    fields.sleepEnvironment=document.getElementById("sleepEnvironment");
+    fields.settlingMethod=document.getElementById("settlingMethod");
+    return existing;
+  }
+
+  const dietStage=document.getElementById("dietStage");
+  const dietBox=dietStage?.closest(".phase-box");
+  if(!dietBox) return null;
+
+  const block=document.createElement("div");
+  block.id="profileLongTermContext";
+  block.className="profile-context-block";
+
+  const title=document.createElement("div");
+  title.className="profile-context-title";
+  title.textContent="长期背景";
+
+  const desc=document.createElement("div");
+  desc.className="sectiondesc";
+  desc.textContent="持续一段时期的喂养与睡眠习惯。长期改变时可创建新的成长阶段。";
+
+  const grid=document.createElement("div");
+  grid.className="fields2 profile-context-fields";
+  grid.append(
+    contextField("喂养方式","feedingMode","例如：配方奶为主 / 混合喂养 / 母乳亲喂","feedingMode"),
+    contextField("睡眠环境","sleepEnvironment","例如：同房婴儿床 / 遮光 / 白噪音","sleepEnvironment"),
+    contextField("常用哄睡方式","settlingMethod","例如：抱哄后放床 / 拍睡 / 奶睡","settlingMethod")
+  );
+
+  block.append(title,desc,grid);
+  dietBox.insertAdjacentElement("beforebegin",block);
+  return block;
 }
 
 function updateDayTitle(){
@@ -71,7 +116,7 @@ function updateDayTitle(){
   if(!title || !pageDate) return;
 
   const today=localDateKey(new Date());
-  const name=safeName(currentSavedName);
+  const name=clean(saved.name,MAX_NAME_LENGTH);
   let expected="";
 
   if(pageDate===today){
@@ -92,32 +137,64 @@ async function readCurrentProfile(){
   return getProfile(id);
 }
 
-async function loadCurrentName(){
-  const input=ensureNameField();
-  const profile=await readCurrentProfile();
-  const name=safeName(profile?.base?.name||"");
+function setFieldValues(values){
+  for(const [key,value] of Object.entries(values)){
+    if(fields[key] && document.activeElement!==fields[key]) fields[key].value=value;
+  }
+}
 
-  currentSavedName=name;
-  draftName=name;
-  if(input && document.activeElement!==input) input.value=name;
+async function loadCurrentProfileExtras(){
+  ensureNameField();
+  ensureContextFields();
+  const profile=await readCurrentProfile();
+
+  const values={
+    name:clean(profile?.base?.name||"",MAX_NAME_LENGTH),
+    feedingMode:clean(profile?.stage?.feedingMode||"",MAX_CONTEXT_LENGTH),
+    sleepEnvironment:clean(profile?.stage?.sleepEnvironment||"",MAX_CONTEXT_LENGTH),
+    settlingMethod:clean(profile?.stage?.settlingMethod||"",MAX_CONTEXT_LENGTH)
+  };
+
+  saved={...values};
+  draft={...values};
+  setFieldValues(values);
   updateDayTitle();
 }
 
-async function persistDraftName(){
+async function persistDraftProfileExtras(){
   const profile=await readCurrentProfile();
   if(!profile) return;
 
-  const name=safeName(draftName);
-  if(profile.base?.name!==name){
+  const values={
+    name:clean(draft.name,MAX_NAME_LENGTH),
+    feedingMode:clean(draft.feedingMode,MAX_CONTEXT_LENGTH),
+    sleepEnvironment:clean(draft.sleepEnvironment,MAX_CONTEXT_LENGTH),
+    settlingMethod:clean(draft.settlingMethod,MAX_CONTEXT_LENGTH)
+  };
+
+  const changed=
+    profile.base?.name!==values.name ||
+    profile.stage?.feedingMode!==values.feedingMode ||
+    profile.stage?.sleepEnvironment!==values.sleepEnvironment ||
+    profile.stage?.settlingMethod!==values.settlingMethod;
+
+  if(changed){
     await putProfile({
       ...profile,
-      base:{...(profile.base||{}),name},
+      base:{...(profile.base||{}),name:values.name},
+      stage:{
+        ...(profile.stage||{}),
+        feedingMode:values.feedingMode,
+        sleepEnvironment:values.sleepEnvironment,
+        settlingMethod:values.settlingMethod
+      },
       updatedAt:new Date().toISOString()
     });
   }
 
-  currentSavedName=name;
-  if(nameInput) nameInput.value=name;
+  saved={...values};
+  draft={...values};
+  setFieldValues(values);
   updateDayTitle();
 }
 
@@ -128,9 +205,9 @@ function bindToastObserver(){
   toastObserver=new MutationObserver(()=>{
     const text=toastText.textContent||"";
     if(text.includes("档案已保存") || text.includes("已创建新的成长阶段")){
-      setTimeout(()=>persistDraftName().catch(error=>console.warn("Baby name save failed",error)),0);
+      setTimeout(()=>persistDraftProfileExtras().catch(error=>console.warn("Profile extras save failed",error)),0);
     }else if(text.includes("导入完成")){
-      setTimeout(()=>loadCurrentName().catch(error=>console.warn("Baby name reload failed",error)),0);
+      setTimeout(()=>loadCurrentProfileExtras().catch(error=>console.warn("Profile extras reload failed",error)),0);
     }
   });
   toastObserver.observe(toastText,{childList:true,subtree:true,characterData:true});
@@ -149,24 +226,25 @@ function bindNavigationRefresh(){
       ? event.target.closest('.nav button[data-view="profile"]')
       : null;
     if(nav){
-      setTimeout(()=>loadCurrentName().catch(error=>console.warn("Baby name load failed",error)),80);
+      setTimeout(()=>loadCurrentProfileExtras().catch(error=>console.warn("Profile extras load failed",error)),80);
     }
   },false);
 }
 
-async function initBabyName(){
+async function initProfileExtras(){
   ensureStyles();
   ensureNameField();
+  ensureContextFields();
   bindToastObserver();
   bindTitleObserver();
   bindNavigationRefresh();
-  await loadCurrentName();
+  await loadCurrentProfileExtras();
 }
 
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",()=>{
-    initBabyName().catch(error=>console.warn("Baby name init failed",error));
+    initProfileExtras().catch(error=>console.warn("Profile extras init failed",error));
   },{once:true});
 }else{
-  initBabyName().catch(error=>console.warn("Baby name init failed",error));
+  initProfileExtras().catch(error=>console.warn("Profile extras init failed",error));
 }
