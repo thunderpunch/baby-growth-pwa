@@ -27,7 +27,7 @@ const ids=[...index.matchAll(/\bid=["']([^"']+)["']/g)].map(m=>m[1]);
 const duplicates=[...new Set(ids.filter((id,i)=>ids.indexOf(id)!==i))];
 assert.deepEqual(duplicates,[],`index.html contains duplicate ids: ${duplicates.join(", ")}`);
 
-for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","nightSleepEntries","lastNightSummary","contextSummary","modal","toast"]){
+for(const id of ["pageDate","quickbar","metrics","timeline","nightSleepAt","nightWakeAt","nightSleepEntries","lastNightSummary","historyView","historyGrid","contextSummary","modal","toast"]){
   assert.ok(ids.includes(id),`missing required DOM mount #${id}`);
 }
 assert.equal((index.match(/data-night-morning/g)||[]).length,1,"Exactly one static Morning action is allowed");
@@ -47,7 +47,7 @@ const readyAt=entry.indexOf('classList.add("app-ready")');
 const firstAwait=entry.indexOf("await ");
 assert.ok(readyAt>=0&&(firstAwait<0||readyAt<firstAwait),"app-ready must happen before the first await");
 
-for(const moduleName of ["migration-v3.js","sleep-v3.js","timeline-v3.js","data-io-v3.js"]){
+for(const moduleName of ["migration-v3.js","history.js","sleep-v3.js","timeline-v3.js","data-io-v3.js"]){
   assert.ok(entry.includes(`./${moduleName}`),`export-ipad.js missing boot module ${moduleName}`);
 }
 assert.doesNotMatch(entry,/sleep-ui-bridge\.js/,"runtime DOM bridge must not return to the boot chain");
@@ -81,6 +81,9 @@ for(const item of shellEntries){
   let ok=false;
   try{ok=(await stat(path.join(root,local))).isFile();}catch{}
   assert.ok(ok,`sw.js APP_SHELL references missing file ${item}`);
+}
+for(const item of ["./history.js","./history.css"]){
+  assert.ok(shellEntries.includes(item),`Service Worker must cache ${item}`);
 }
 assert.ok(!shellEntries.some(item=>item.includes("sleep-ui-bridge.js")),"Service Worker must not cache removed sleep bridge");
 
