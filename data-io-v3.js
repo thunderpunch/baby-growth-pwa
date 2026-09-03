@@ -94,13 +94,43 @@ function workbookFile(payload){
   const blob=zipStore(files);return new File([blob],`宝宝作息_${payload.range.start}_至_${payload.range.end}.xlsx`,{type:blob.type});
 }
 function download(file){const u=URL.createObjectURL(file),a=document.createElement("a");a.href=u;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
-async function shareOrDownload(file){try{if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:"宝宝成长记录",text:`宝宝成长记录 ${file.name.endsWith(".xlsx")?"Excel":"JSON"} 数据`,files:[file]});return;}}catch(e){if(e?.name==="AbortError")return;}download(file);showToast("当前环境无法分享文件，已改为下载保存");}
+function canShareFile(file){return !!(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]}));}
+async function tryShareFile(file,label){
+  if(!canShareFile(file))return false;
+  try{
+    await navigator.share({title:"宝宝成长记录",text:`宝宝成长记录 ${label} 数据`,files:[file]});
+    return true;
+  }catch(error){
+    if(error?.name==="AbortError")throw error;
+    return false;
+  }
+}
+function jsonTextShareFile(file){
+  return new File([file],`${file.name}.txt`,{type:"text/plain"});
+}
+async function shareOrDownload(file){
+  const isJson=file.name.endsWith(".json"),label=file.name.endsWith(".xlsx")?"Excel":"JSON";
+  try{
+    if(await tryShareFile(file,label))return;
+    if(isJson){
+      const compatibilityFile=jsonTextShareFile(file);
+      if(await tryShareFile(compatibilityFile,"JSON")){
+        showToast("当前浏览器不支持直接分享 .json，已使用兼容文本附件；内容仍是完整 JSON");
+        return;
+      }
+    }
+  }catch(error){
+    if(error?.name==="AbortError")return;
+  }
+  download(file);
+  showToast("当前浏览器不支持该文件的系统分享，已保存标准文件，可从文件管理器继续分享");
+}
 async function runExport(mode){try{const payload=await buildPayload(),file=format==="xlsx"?workbookFile(payload):jsonFile(payload);if(mode==="share")await shareOrDownload(file);else download(file);}catch(e){showToast(e.message||"导出失败");}}
 
 function installExportUi(){
   const grid=$("shareBtn")?.closest(".export-grid");if(!grid||$("exportFormatChoice"))return;
   const choice=document.createElement("div");choice.id="exportFormatChoice";choice.className="export-format-choice";choice.innerHTML=`<button type="button" class="active" data-export-format="json"><b>JSON</b><span>归档 / 恢复 / 分析</span></button><button type="button" data-export-format="xlsx"><b>Excel</b><span>查看 / 筛选 / 转发</span></button>`;grid.before(choice);
-  const share=$("shareBtn"),save=$("downloadBtn");if(share){share.querySelector("b").textContent="系统分享";share.querySelector("span").textContent="Android、PWA、iPad/iPhone 均优先使用系统分享面板。";}if(save){save.querySelector("b").textContent="保存文件";save.querySelector("span").textContent="按上方所选格式保存到本机或云盘。";}
+  const share=$("shareBtn"),save=$("downloadBtn");if(share){share.querySelector("b").textContent="系统分享";share.querySelector("span").textContent="优先分享原文件；部分 Android 浏览器会自动使用兼容文本附件。";}if(save){save.querySelector("b").textContent="保存文件";save.querySelector("span").textContent="按上方所选格式保存到本机或云盘。";}
 }
 function installStyle(){if(document.querySelector('link[data-export-v3-style]'))return;const l=document.createElement("link");l.rel="stylesheet";l.href=new URL("./export-v2.css",import.meta.url).href;l.dataset.exportV3Style="1";document.head.appendChild(l);}
 function normalizeIncoming(raw){
