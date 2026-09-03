@@ -13,6 +13,7 @@ const forbidden=[
   "sleep-v2.js",
   "sleep-v2.css",
   "sleep-method.js",
+  "sleep-ui-bridge.js",
   "icons/baby-neutral.svg"
 ];
 for(const file of forbidden){
