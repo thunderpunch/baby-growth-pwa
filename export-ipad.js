@@ -28,8 +28,8 @@ function loadDataIo(){
 }
 
 try{
-  // Independent boot helpers can download, parse and initialize in parallel.
-  await Promise.all([
+  // Independent boot helpers download, parse and initialize in parallel.
+  const bootModules=[
     import("./icon-theme.js"),
     import("./profile-save-guard.js"),
     import("./baby-name.js"),
@@ -40,7 +40,8 @@ try{
     import("./gesture-guard.js"),
     import("./remote-quick-config.js"),
     import("./history.js")
-  ]);
+  ];
+  await Promise.all(bootModules);
 
   // The Today DOM already contains the final sleep-action layout, so no runtime DOM bridge is needed.
   await Promise.all([
