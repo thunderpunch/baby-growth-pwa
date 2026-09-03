@@ -18,6 +18,7 @@ async function walk(dir){
 }
 
 const index=await read("index.html");
+const app=await read("app.js");
 const entry=await read("export-ipad.js");
 const sw=await read("sw.js");
 const interaction=await read("interaction-guard.css");
@@ -37,6 +38,18 @@ assert.ok(index.indexOf("data-night-morning")<index.indexOf('id="lastNightSummar
 assert.ok(index.indexOf('id="lastNightSummary"')<index.indexOf("data-night-goodnight"),"Last-night summary must stay above Goodnight action");
 assert.match(index,/type=["']module["']\s+src=["']\.\/app\.js["']/,"index.html must load app.js as module");
 assert.match(index,/type=["']module["']\s+src=["']\.\/export-ipad\.js["']/,"index.html must load export-ipad.js as module");
+
+// History is owned by history.js. Removed backfill UI and legacy shell mounts must not return.
+assert.doesNotMatch(index,/backfillBtn|historyTodayBtn|history-tools|连续补历史|开始批量补录/,"obsolete History backfill shell must stay physically removed");
+
+// app.js is the core Today/profile controller, not a second implementation of History, Sleep,
+// Data IO or Service Worker update coordination.
+assert.doesNotMatch(app,/\bgetAllRecords\b|\bgetAllDays\b/,"app controller must not perform lifetime History scans");
+assert.doesNotMatch(app,/function\s+renderHistory\b/,"History rendering belongs only to history.js");
+assert.doesNotMatch(app,/function\s+openBackfillModal\b|backfillBtn|historyTodayBtn/,"removed batch-backfill workflow must not return to app.js");
+assert.doesNotMatch(app,/navigator\.serviceWorker\.register\s*\(/,"Service Worker registration belongs only to update-coordinator.js");
+assert.doesNotMatch(app,/function\s+saveNightSleep\b/,"legacy day.nightSleep write path must not return");
+assert.doesNotMatch(app,/\bSCHEMA_VERSION\b|\bMAX_IMPORT_BYTES\b|function\s+validatePayload\b|function\s+buildExportPayload\b|function\s+handleImportFile\b|function\s+applyImport\b/,"v3 Data IO must remain the unique import/export implementation");
 
 // Progressive boot contract: default HTML may paint first, but feature hydration must never
 // blank the whole page or start the complete document a second time.
