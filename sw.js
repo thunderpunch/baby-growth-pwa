@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.3.8-history-cleanup";
+const CACHE_NAME="baby-growth-pwa-v1.3.9-network-fresh-code";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./recent-milk-template.js",
@@ -43,7 +43,10 @@ async function navigationFallback(request){
 
 async function networkFirst(request){
   try{
-    const response=await fetch(request,{cache:"no-store"});
+    // Revalidate mutable application code on every online load. `no-cache` still allows
+    // conditional HTTP caching (ETag/304) while preventing a stale browser response from
+    // defeating the Service Worker freshness policy.
+    const response=await fetch(request,{cache:"no-cache"});
     await putInCurrentCache(request,response);
     return response;
   }catch(error){
@@ -68,13 +71,14 @@ self.addEventListener("fetch",event=>{
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin) return;
 
-  // Navigation stays network-first so the HTML shell can discover a new deployment quickly.
-  // home-config.json is intentionally remote-controlled and must also prefer the network.
   const navigation=event.request.mode==="navigate";
   const remoteConfig=url.pathname.endsWith("/home-config.json");
+  const mutableCode=["script","style","manifest"].includes(event.request.destination);
 
-  // All version-owned scripts, styles, manifests and icons are pre-cached during SW install.
-  // Serving them cache-first removes a network round trip from normal PWA refreshes. A new
-  // deployment installs a new CACHE_NAME, and update-coordinator activates it then reloads once.
-  event.respondWith(navigation || remoteConfig ? networkFirst(event.request) : cacheFirst(event.request));
+  // Mutable application code always revalidates online and falls back to Cache Storage offline.
+  // This removes the old requirement to bump CACHE_NAME for every JS/CSS change. Icons and
+  // other stable assets remain cache-first for fast repeat loads.
+  event.respondWith(navigation || remoteConfig || mutableCode
+    ? networkFirst(event.request)
+    : cacheFirst(event.request));
 });
