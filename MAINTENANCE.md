@@ -65,16 +65,37 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 
 ### `app.js`
 
-目前仍过大，后续优先按职责拆分，而不是按代码行数机械切文件：
+目前仍过大，后续优先按职责拆分，而不是按代码行数机械切文件。
+
+已经完成的职责外移：
+
+- History → `history.js`
+
+History 的新功能只允许进入 `history.js`。旧 `app.js::renderHistory()` 已经不再是导航入口，只作为待删除死代码存在；禁止继续修改或扩展它。下一轮拆 `app.js` 时应直接物理删除。
+
+仍待拆分：
 
 - Today 页面控制器
-- 通用记录编辑器/弹窗路由
-- History
+- 通用记录编辑器 / 弹窗路由
 - Profile
 - Context
 - 基础 app shell / navigation
 
 拆分完成后，`app.js` 只保留轻量启动与页面协调职责。
+
+### History
+
+当前长期浏览策略：
+
+- 按 `YYYY-MM` 浏览；
+- 上下月自然跨年；
+- 年份在导航中显式显示；
+- 单次只读取一个月的数据范围；
+- 不做“最近 30 天”硬截断；
+- 支持直接跳到具体日期；
+- `tests/history.test.mjs` 必须持续覆盖跨年、闰年、禁止全库扫描。
+
+不要再增加“先 getAllRecords() 再前端筛选”的 History 实现。
 
 ### Sleep
 
@@ -107,10 +128,10 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 
 操作前：
 
-1. 导出/备份当前仓库；
+1. 导出 / 备份当前仓库；
 2. 创建永久备份 tag 或独立 archive 仓库；
 3. 确认 Pages、CI、PWA 更新与数据迁移全部稳定；
-4. 通知所有仍持有旧 clone 的设备/开发环境。
+4. 通知所有仍持有旧 clone 的设备 / 开发环境。
 
 然后可创建 orphan branch，只提交当前最终文件树，再将 main 指向这个新根提交。
 
@@ -120,7 +141,7 @@ CSS 也必须至少被 HTML、当前 JS、其它 CSS 或 Service Worker app shel
 
 只有当历史中存在明显的大二进制文件、误提交数据包、视频、压缩包等时更有价值。
 
-可以从所有历史提交中删除指定大文件/目录，同时保留其余提交历史。操作同样会重写 SHA，需要 force push。
+可以从所有历史提交中删除指定大文件 / 目录，同时保留其余提交历史。操作同样会重写 SHA，需要 force push。
 
 ### 不要把 `git gc` 当成 GitHub 远端瘦身方案
 
