@@ -8,6 +8,16 @@
 - 可见页面结构尽量由初始 DOM 或单一 controller 直接表达，不靠运行时 bridge、hidden legacy mount 或重复 handler 形成最终布局。
 - local-first 数据安全优先于 PWA 安装便利和视觉更新。
 
+## App Shell
+
+顶部栏只承载真正的全局/当前页面操作：
+
+- Today：显示前一天 / 日期 / 后一天 / 今天，因为这些控件直接改变当前记录日。
+- History / 档案 / 数据：隐藏全局日期控件，页面使用各自已有的浏览或编辑语义，不显示无效日期选择器。
+- 页面标题仍由页面内容区负责，Topbar 不重复制造第二套“历史 / 档案 / 数据”标题。
+
+普通 App 外壳应抑制浏览器式长按/蓝色 tap highlight；真正需要输入、复制、粘贴的控件显式恢复原生能力。
+
 ## 模块边界
 
 ### `record-model.js`
@@ -118,6 +128,9 @@ JSON / Excel I/O 唯一实现。
 - Excel 从 canonical temporal 生成
 - 导入最终经过 `putRecord()` 再次规范化
 - 正常 Today 首屏不等待 Data I/O 模块
+- 系统文件分享必须先通过 `navigator.canShare({files})` 验证，不假设存在 `navigator.share` 就等于支持文件附件
+- 标准归档始终保存 `.json`；若 Android 浏览器不能直接分享 `.json`，可临时用内容完全相同的 `.json.txt` / `text/plain` 作为传输兼容层
+- 导入按 JSON 内容校验，允许选择 `.json` 或该 `.txt` 兼容附件；这不是第二套数据格式
 
 对外 JSON 协议只以 `JSON_DATA_SCHEMA.md` 为权威文档；不要再维护第二份重复协议说明。
 
