@@ -4,6 +4,7 @@ import {
   putDay,getDay,
   getLatestImportBackup,deleteImportBackup,replaceAllData
 } from "./db.js";
+import {ensureRecordTemplates,templateSourceLabel} from "./record-templates.js";
 
 const $=id=>document.getElementById(id);
 const qsa=selector=>Array.from(document.querySelectorAll(selector));
@@ -255,7 +256,7 @@ async function ensureDay(){
 async function loadDay(){
   updateDayTitle();
   const day=await ensureDay();
-  await generatePreviousDayTemplates(day);
+  await ensureRecordTemplates({date:state.date,day,dietStage:state.dietStage,nowISO});
   const freshDay=await getDay(state.date);
   await renderContext(freshDay);
   renderQuickbar();
@@ -264,43 +265,6 @@ async function loadDay(){
   renderMetrics(records);
   renderTimeline(records);
   $("timelineSub").textContent=`${parseDateKey(state.date).getMonth()+1}月${parseDateKey(state.date).getDate()}日`;
-}
-async function generatePreviousDayTemplates(day){
-  if(day.templateGenerated)return;
-  const existing=await getRecordsByDate(state.date,{includeDeleted:false});
-  if(existing.some(record=>record.status==="confirmed"&&(record.type==="milk"||record.type==="diet"))){
-    day.templateGenerated=true;
-    day.templateGeneratedFrom=null;
-    day.updatedAt=nowISO();
-    await putDay(day);
-    return;
-  }
-
-  const previousDate=shiftDateKey(state.date,-1);
-  const previousRecords=(await getRecordsByDate(previousDate,{includeDeleted:false}))
-    .filter(record=>record.status==="confirmed"&&(record.type==="milk"||record.type==="diet"));
-
-  for(const source of previousRecords){
-    const id=`tpl:${state.date}:${source.id}`;
-    if(await getRecord(id))continue;
-    if(source.type==="milk"){
-      await putRecord({
-        id,date:state.date,type:"milk",status:"pending",source:"previous_day_template",
-        templateSourceId:source.id,time:source.time||"",amount:source.amount||"",feedType:source.feedType||"",
-        createdAt:nowISO(),updatedAt:nowISO(),deleted:false
-      });
-    }else{
-      await putRecord({
-        id,date:state.date,type:"diet",status:"pending",source:"previous_day_template",
-        templateSourceId:source.id,time:source.time||"",dietType:state.dietStage,content:"",amount:"",
-        createdAt:nowISO(),updatedAt:nowISO(),deleted:false
-      });
-    }
-  }
-  day.templateGenerated=true;
-  day.templateGeneratedFrom=previousDate;
-  day.updatedAt=nowISO();
-  await putDay(day);
 }
 
 function confirmed(records){return records.filter(record=>record.status==="confirmed"&&!record.deleted);}
@@ -330,7 +294,7 @@ function renderTimeline(records){
   const templates=pending(live);
   if(templates.length){
     $("pendingSummary").classList.remove("hidden");
-    $("pendingSummary").innerHTML=`<div><b>还有 ${templates.length} 条昨日模板待确认</b><small>　未确认前不算正式记录</small></div>`;
+    $("pendingSummary").innerHTML=`<div><b>还有 ${templates.length} 条待确认模板</b><small>　未确认前不算正式记录</small></div>`;
   }else{
     $("pendingSummary").classList.add("hidden");
   }
@@ -385,8 +349,9 @@ function recordLabel(record){
   }
 }
 function recordSub(record){
-  if(record.status==="pending"&&record.type==="milk")return `昨日沿用：${record.time||"—"} · ${record.amount||"—"}ml · ${record.feedType||"未填写"}`;
-  if(record.status==="pending"&&record.type==="diet")return `昨日沿用：${record.time||"—"} · ${record.dietType||state.dietStage}时段；内容和摄入量待填写`;
+  const sourceLabel=templateSourceLabel(record.templateSourceDate,state.date);
+  if(record.status==="pending"&&record.type==="milk")return `参考${sourceLabel}：${record.time||"—"} · ${record.amount||"—"}ml · ${record.feedType||"未填写"}`;
+  if(record.status==="pending"&&record.type==="diet")return `参考${sourceLabel}：${record.time||"—"} · ${record.dietType||state.dietStage}时段；内容和摄入量待填写`;
   switch(record.type){
     case "milk":return record.feedType||"";
     case "diet":return [record.amount,record.note].filter(Boolean).join(" · ");
@@ -475,6 +440,7 @@ function timeField(id,label,value=""){
 async function openRecordModal(type,record=null){
   if(type==="sleep")return;
   const item=record||{};
+  const sourceLabel=templateSourceLabel(item.templateSourceDate,state.date);
   let title="",body="";
   if(type==="milk"){
     title=item.status==="pending"?"确认今日吃奶":(item.id?"修改吃奶":"添加吃奶");
@@ -483,7 +449,7 @@ async function openRecordModal(type,record=null){
       <label class="form-label">类型<select id="fFeedType">
         ${["配方奶","母乳瓶喂","母乳亲喂"].map(value=>`<option ${value===(item.feedType||"配方奶")?"selected":""}>${value}</option>`).join("")}
       </select></label>
-      ${item.status==="pending"?'<div class="smallnote">时间、奶量和类型来自昨天。完全一致可直接保存并确认；有变化就改完再保存。</div>':""}`;
+      ${item.status==="pending"?`<div class="smallnote">时间、奶量和类型参考${escapeHTML(sourceLabel)}。完全一致可直接保存并确认；有变化就改完再保存。</div>`:""}`;
   }else if(type==="diet"){
     title=item.status==="pending"?`确认今日${state.dietStage}`:(item.id?`修改${state.dietStage}`:`添加${state.dietStage}`);
     const selected=item.dietType||state.dietStage;
@@ -493,7 +459,7 @@ async function openRecordModal(type,record=null){
       <div class="fields2 form-label">${timeField("fTime","时间",item.time||"")}
         <label>摄入量<input id="fAmountText" type="text" value="${escapeHTML(item.amount||"")}" placeholder="例如：半碗；几口；约80ml"></label></div>
       <label class="form-label">吃了什么<input id="fContent" type="text" value="${escapeHTML(item.content||"")}" placeholder="例如：米糊 + 南瓜泥"></label>
-      ${item.status==="pending"?'<div class="smallnote">这里只沿用昨天的时间和当前饮食阶段。今天吃了什么、吃了多少仍需按实际填写。</div>':""}`;
+      ${item.status==="pending"?`<div class="smallnote">这里只参考${escapeHTML(sourceLabel)}的时间和当前饮食阶段。今天吃了什么、吃了多少仍需按实际填写。</div>`:""}`;
   }else if(type==="diaper"){
     const kind=item.diaperType||"尿";
     title=item.id?"修改换尿布":"添加换尿布";
