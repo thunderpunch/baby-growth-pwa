@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.4.4-profile-insights";
+const CACHE_NAME="baby-growth-pwa-v1.4.5-streamlined-profile";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./date-picker.js","./date-picker.css","./large-text.css",
