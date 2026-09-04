@@ -81,7 +81,7 @@ export function summarizeHistoryDay(date,records,day=null){
   const stools=diapers.filter(record=>String(record.diaperType||"").includes("便"));
   const wakes=confirmed.filter(record=>record.type==="wake");
   const health=confirmed.filter(record=>record.type==="health");
-  const temperatures=health.map(record=>Number(record.temperature)).filter(Number.isFinite);
+  const temperatures=health.map(record=>String(record.temperature??"").trim()).filter(Boolean).map(Number).filter(Number.isFinite);
   const stoolTimes=stools.map(record=>occurredLocal(record).time||record.time||"").filter(Boolean).sort();
   const wakeTimes=wakes.map(record=>wakeLocalRange(record).wakeTime||record.wakeTime||"").filter(Boolean).sort();
   return {
