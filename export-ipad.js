@@ -17,6 +17,7 @@ ensureStylesheet("./icon-theme.css","data-baby-icon-theme");
 ensureStylesheet("./baby-name.css","data-baby-name-style");
 ensureStylesheet("./time-picker.css","data-time-picker-style");
 ensureStylesheet("./date-picker.css","data-date-picker-style");
+ensureStylesheet("./large-text.css","data-large-text-style");
 ensureStylesheet("./interaction-guard.css","data-interaction-guard");
 
 let dataIoPromise=null;
