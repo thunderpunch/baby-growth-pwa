@@ -12,7 +12,7 @@ const [boot,sw,updater,sleep,timeline,datePicker]=await Promise.all([
 // Boot helpers are independent and must not drift back to a long serial import waterfall.
 assert.match(boot,/const\s+bootModules\s*=\s*\[/,"boot must declare parallel module group");
 assert.match(boot,/await\s+Promise\.all\(bootModules\)/,"boot helpers must initialize in parallel");
-for(const css of ["layout-fix.css","sleep-v3.css","icon-theme.css","baby-name.css","time-picker.css","interaction-guard.css"]){
+for(const css of ["layout-fix.css","sleep-v3.css","icon-theme.css","baby-name.css","time-picker.css","date-picker.css","large-text.css","interaction-guard.css"]){
   assert.ok(boot.includes(css),`render-related stylesheet must be requested early: ${css}`);
 }
 
@@ -50,6 +50,16 @@ assert.doesNotMatch(sleep,/\bsetInterval\s*\(/,"sleep-v3 must not poll in the ba
 assert.match(sleep,/getRecordsByDate\(previousDate/,"sleep analysis should read the previous evening by indexed date");
 assert.match(sleep,/getRecordsByDate\(pageDate/,"sleep analysis should read the selected day by indexed date");
 assert.match(sleep,/const\s+analysis=await\s+analysisForDate\(pageDate\)/,"one refresh should compute sleep analysis once");
+
+// Saving Good Morning/other sleep facts causes app.js to rebuild the generic metrics asynchronously.
+// Sleep must do one final projection after that exact child-list rebuild, otherwise the generic
+// render can race and temporarily count last night's anchor as a daytime nap.
+const refreshAppDay=sleep.match(/function\s+refreshAppDay\(\)\{([\s\S]*?)\n\}\nasync function persistOrdinary/)?.[1]||"";
+assert.ok(refreshAppDay,"sleep refreshAppDay synchronization body not found");
+assert.match(refreshAppDay,/new MutationObserver/,"sleep save refresh must synchronize with the generic metrics rebuild");
+assert.match(refreshAppDay,/renderObserver\.observe\(metrics,\{childList:true\}\)/,"sleep refresh observer must watch only the metrics child-list rebuild");
+assert.match(refreshAppDay,/renderObserver\.disconnect\(\)/,"sleep refresh observer must self-disconnect after the one rebuild");
+assert.doesNotMatch(refreshAppDay,/subtree:true/,"sleep save synchronization must not become a broad long-lived subtree observer");
 
 // Timeline projection should perform one indexed-day read, rather than one IDB transaction per row.
 assert.match(timeline,/getRecordsByDate\(pageDate/,"timeline must batch records by indexed page date");
