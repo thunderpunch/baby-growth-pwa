@@ -73,6 +73,22 @@ IndexedDB 当前 `DB_VERSION = 1`，仍使用既有 `date` index。
 
 后续仍按职责继续拆分，不把已外移能力重新吸回。
 
+当前 Profile 只维护长期背景：饮食阶段、长期喂养方式、平日/周末主要照护者、长期睡眠环境、当前主要问题，以及基础资料。通常放床、入睡耗时、典型小睡、常用哄睡方式不再作为当前手填档案字段。
+
+### `profile-insights.js`
+
+档案页“近期规律”唯一 owner。
+
+- 只在进入档案页时读取最近 14 天范围，不阻塞 Today 首屏；
+- 只使用 confirmed / nondeleted Sleep；
+- 夜间入睡和夜间主睡优先使用明确 `nightAnchor`；
+- 白天小睡和主要入睡方式从近期事实推导；
+- 至少 3 个有效样本才展示规律；
+- 只读 projection，不把推导结果写回 Profile 或原始记录；
+- 禁止 `getAllRecords()` lifetime 扫描。
+
+历史 profile 中旧 `weekday/weekend` 作息字段继续保留在旧版本数据中，仅作为历史兼容事实，新档案不再生成。
+
 ### `sleep-v3.js`
 
 Sleep 唯一业务 owner：
@@ -82,7 +98,9 @@ Sleep 唯一业务 owner：
 - Good Morning；
 - Wake “属于昨晚 / 属于今晚”关联；
 - 昨夜摘要；
-- 小睡/夜间/待判断 projection。
+- 小睡/夜间/待判断 projection；
+- 可选睡眠区域室温 `roomTemperatureC`；
+- Sleep 分类不依赖人工维护的 Profile“通常放床时间”。
 
 首页可见结构直接存在于 `index.html`：
 
@@ -129,8 +147,8 @@ JSON / Excel I/O 唯一实现。
 - 导入最终经过 `putRecord()` 再次规范化
 - 正常 Today 首屏不等待 Data I/O 模块
 - 系统文件分享必须先通过 `navigator.canShare({files})` 验证，不假设存在 `navigator.share` 就等于支持文件附件
-- 标准归档始终保存 `.json`；若 Android 浏览器不能直接分享 `.json`，可临时用内容完全相同的 `.json.txt` / `text/plain` 作为传输兼容层
-- 导入按 JSON 内容校验，允许选择 `.json` 或该 `.txt` 兼容附件；这不是第二套数据格式
+- 正式分享 / 保存格式只维护标准 `.json`；不创建第二种 `text/plain` 附件格式
+- 浏览器不支持文件型 Web Share 时明确回退为标准 JSON 文件保存
 
 对外 JSON 协议只以 `JSON_DATA_SCHEMA.md` 为权威文档；不要再维护第二份重复协议说明。
 

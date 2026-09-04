@@ -49,6 +49,10 @@ All pre-release verification checks passed.
 
 `tests/record-templates.test.mjs`
 
+`tests/profile-contract.test.mjs`
+
+`tests/profile-insights.test.mjs`
+
 覆盖：
 
 - DOM ID 不重复；
@@ -63,6 +67,9 @@ All pre-release verification checks passed.
 - 某来源日仍有未处理吃奶 pending 时不能向后传播；全部确认/跳过后，剩余 confirmed milk 才能成为后续来源；
 - 目标日模板尚未开始处理时必须继续同步来源日的时间、奶量、类型和记录集合；目标日一旦开始确认/跳过则冻结，不后台重写用户决策；
 - 奶和饮食模板策略独立，模板生成不得使用 `getAllRecords()` 全历史扫描，也不得恢复 DOM 监听桥；
+- Profile 当前 UI 不得恢复手填“通常放床 / 入睡耗时 / 典型小睡 / 常用哄睡方式”；长期背景字段必须保持明确；
+- `profile-insights.js` 只做最近 14 天有界查询，样本不足不宣称规律，且不得写回 Profile/事实记录；
+- Sleep 分类不得重新依赖手填 Profile bedtime；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；

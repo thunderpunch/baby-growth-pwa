@@ -94,11 +94,17 @@ IndexedDB 运行时仍可能保留：
 
 只有当所有运行模块都直接读取 canonical temporal 且迁移覆盖充分后，再逐步删除这些兼容投影。
 
-### C. Data I/O 样式命名
+### C. 历史 Profile 字段
+
+旧 profileVersion 中可能存在 `stage.weekday/weekend.{bedtime,latency,naps,caregiver}` 与 `settlingMethod`。当前 UI 已不再生成这些字段，但它们属于历史事实，不做破坏性迁移或批量删除。
+
+运行时只为旧 caregiver 提供读取回退；近期睡眠规律由 `profile-insights.js` 从最近 14 天事实推导，不把推导值回写旧 Profile。
+
+### D. Data I/O 样式命名
 
 将 `export-v2.css` 语义化为 `data-io.css`，同步更新引用和 app shell。
 
-### D. CSS 启动链
+### E. CSS 启动链
 
 `styles.css -> @import styles-base.css` 仍有一次 CSS 依赖串行机会。测量实际 waterfall 后再决定拆成两个 `<link>` 还是合并；不要只为理论优化增加维护复杂度。
 

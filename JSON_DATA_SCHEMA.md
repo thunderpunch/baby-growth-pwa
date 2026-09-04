@@ -231,20 +231,11 @@
   "stage": {
     "dietStage": "辅食",
     "feedingMode": "配方奶为主",
+    "caregivers": {
+      "weekday": "爷爷奶奶",
+      "weekend": "父母"
+    },
     "sleepEnvironment": "同房婴儿床，遮光，白噪音",
-    "settlingMethod": "抱哄后放床，必要时拍睡",
-    "weekday": {
-      "bedtime": "19:30",
-      "latency": "约60分钟",
-      "naps": "3觉",
-      "caregiver": "爷爷奶奶"
-    },
-    "weekend": {
-      "bedtime": "19:30",
-      "latency": "约20分钟",
-      "naps": "3觉",
-      "caregiver": "父母"
-    },
     "mainIssue": "最近凌晨4点左右醒后难以重新入睡"
   }
 }
@@ -257,10 +248,13 @@
 - `base.sex`：`female` / `male` / 空字符串。
 - `stage.dietStage`：`辅食` / `正餐`。
 - `stage.feedingMode`：长期喂养方式。
+- `stage.caregivers.weekday / weekend`：平日与周末主要照护者。
 - `stage.sleepEnvironment`：长期睡眠环境。
-- `stage.settlingMethod`：常用哄睡方式。
-- `stage.weekday / weekend`：平日与周末典型作息和照护背景。
 - `stage.mainIssue`：当前持续关注的问题。
+
+当前档案不再保存“通常放床 / 入睡耗时 / 典型小睡 / 常用哄睡方式”作为人工维护字段；这些近期特征由记录分析层推导。
+
+历史导出的 `profileVersions` 可能仍包含旧版 `stage.weekday/weekend.{bedtime,latency,naps,caregiver}` 或 `stage.settlingMethod`。它们属于已有历史 Profile 的原始数据，应原样保留并可用于历史分析，但当前 UI 不再生成这些字段。旧 caregiver 读取时可回退到 `stage.weekday/weekend.caregiver`。
 
 历史分析应按 `effectiveFrom` 选择当时有效的 profile。
 

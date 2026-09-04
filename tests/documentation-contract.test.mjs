@@ -20,6 +20,10 @@ assert.match(agents,/static-check[\s\S]*Pages[\s\S]*completed \/ success/,"AGENT
 assert.match(agents,/按自然年|自然年分档/,"AGENTS.md must preserve natural-year backup partitioning");
 assert.match(agents,/完整 JSON 快照|年度完整 JSON/,"AGENTS.md must preserve full-snapshot JSON backup policy");
 assert.match(agents,/聊天记忆不是唯一事实源/,"AGENTS.md must require repository documentation as durable context");
+assert.match(agents,/档案与近期规律[\s\S]*最近 ?14 天/,"AGENTS.md must preserve derived Profile insight policy");
+assert.match(agents,/已退出当前档案 UI[\s\S]*通常放床|通常放床[\s\S]*已退出当前档案 UI/,"AGENTS.md must preserve removal of redundant manual Profile routines");
+assert.match(schema,/caregivers[\s\S]*weekday[\s\S]*weekend/,"JSON schema docs must describe current caregiver profile structure");
+assert.match(schema,/历史导出的 `profileVersions`[\s\S]*settlingMethod/,"JSON docs must preserve legacy Profile fields as historical data");
 
 const runtimeSchema=dataIo.match(/const\s+SCHEMA_VERSION\s*=\s*["']([^"']+)["']/)?.[1];
 assert.ok(runtimeSchema,"data-io-v3.js schema version not found");
