@@ -25,6 +25,9 @@ function fmtDuration(minutes){
   if(!hours)return `${rest}分钟`;
   return rest?`${hours}h${rest}m`:`${hours}h`;
 }
+function esc(value=""){
+  return String(value).replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+}
 function liveSleeps(records){
   return records.filter(record=>record?.type==="sleep"&&record.status==="confirmed"&&!record.deleted);
 }
@@ -55,8 +58,12 @@ export function deriveProfileInsights(records){
 
   const trackedDates=new Set(sleeps.map(record=>record.date).filter(Boolean));
   const napCounts=new Map([...trackedDates].map(date=>[date,0]));
+  let napSamples=0;
   for(const record of sleeps){
-    if(strictDayNap(record))napCounts.set(record.date,(napCounts.get(record.date)||0)+1);
+    if(strictDayNap(record)){
+      napCounts.set(record.date,(napCounts.get(record.date)||0)+1);
+      napSamples++;
+    }
   }
   const typicalNaps=median([...napCounts.values()]);
   const method=topMethod(sleeps);
@@ -64,9 +71,10 @@ export function deriveProfileInsights(records){
   return {
     sleepDays:trackedDates.size,
     nightSamples:nights.length,
+    napSamples,
     typicalNightStart:nightStarts.length>=MIN_SAMPLES?fmtClock(median(nightStarts)):"",
     averageNightSleep:nightDurations.length>=MIN_SAMPLES?fmtDuration(nightDurations.reduce((sum,value)=>sum+value,0)/nightDurations.length):"",
-    typicalNapCount:napCounts.size>=MIN_SAMPLES?typicalNaps:null,
+    typicalNapCount:napCounts.size>=MIN_SAMPLES&&napSamples>=MIN_SAMPLES?typicalNaps:null,
     mainSleepMethod:method.samples>=MIN_SAMPLES?method.method:"",
     mainSleepMethodCount:method.samples>=MIN_SAMPLES?method.count:0,
     sleepMethodSamples:method.samples
@@ -88,7 +96,8 @@ function ensureStyle(){
   document.head.appendChild(link);
 }
 function insightCard(label,value,detail){
-  return `<div class="profile-insight"><small>${label}</small><b>${value||"记录几天后自动显示"}</b>${detail?`<span>${detail}</span>`:""}</div>`;
+  const shown=value||"记录几天后自动显示";
+  return `<div class="profile-insight"><small>${esc(label)}</small><b>${esc(shown)}</b>${detail?`<span>${esc(detail)}</span>`:""}</div>`;
 }
 export async function renderProfileInsights(container,endDate){
   if(!container)return;
@@ -97,7 +106,7 @@ export async function renderProfileInsights(container,endDate){
   try{
     const insight=await loadProfileInsights(endDate);
     const nightDetail=insight.nightSamples?`基于 ${insight.nightSamples} 晚完整夜睡`:"需要至少 3 晚完整夜睡";
-    const napDetail=insight.sleepDays?`基于 ${insight.sleepDays} 个有睡眠记录日`:"需要至少 3 个记录日";
+    const napDetail=insight.napSamples?`基于 ${insight.sleepDays} 个记录日 / ${insight.napSamples} 段白天睡眠`:"需要至少 3 段白天睡眠";
     const methodDetail=insight.sleepMethodSamples?`${insight.mainSleepMethodCount||0}/${insight.sleepMethodSamples} 次记录`:"需要至少 3 次方式记录";
     container.innerHTML=`<div class="profile-insights-grid">
       ${insightCard("夜间入睡",insight.typicalNightStart,nightDetail)}
