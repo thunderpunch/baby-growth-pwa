@@ -600,7 +600,7 @@ async function loadProfileUI(includeInsights=false){
     $("profileVersionInfo").innerHTML="<b>尚未创建档案。</b> 首次填写后点“保存当前档案”即可创建 V1。";
   }
   qsa("[data-diet-stage]").forEach(button=>button.classList.toggle("active",button.dataset.dietStage===state.dietStage));
-  if(includeInsights)await renderProfileInsights($("profileInsights"),localDateKey(new Date());
+  if(includeInsights)await renderProfileInsights($("profileInsights"),localDateKey(new Date()));
 }
 function profileFormValue(){
   const current=state.currentProfile||{},base=current.base||{};

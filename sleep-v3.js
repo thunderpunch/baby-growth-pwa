@@ -94,10 +94,10 @@ function nightAnchorFor(records,nightKey){
   return live(records,"sleep").filter(r=>r.nightAnchor&&r.nightKey===nightKey)
     .sort((a,b)=>stampMs(b.updatedAt)-stampMs(a.updatedAt))[0]||null;
 }
-function inferredNightForDate(records,pageDate,bedtimeMin){
+function inferredNightForDate(records,pageDate){
   return live(records,"sleep")
     .filter(r=>!r.nightAnchor&&duration(r)!=null&&dpart(r.endDateTime)===pageDate)
-    .filter(r=>basicClassify(r,bedtimeMin).kind==="night")
+    .filter(r=>basicClassify(r).kind==="night")
     .sort((a,b)=>stampMs(a.startDateTime)-stampMs(b.startDateTime));
 }
 function wakesForNight(records,nightKey){
@@ -114,7 +114,7 @@ async function analysisForDate(pageDate){
   ]);
   const records=[...previous,...current];
   const anchor=nightAnchorFor(records,pageDate);
-  const inferred=anchor?[]:inferredNightForDate(records,pageDate,bedtime);
+  const inferred=anchor?[]:inferredNightForDate(records,pageDate);
   const night=anchor?[anchor]:inferred;
   const nightIds=new Set(night.map(r=>r.id));
   const naps=[],uncertain=[];

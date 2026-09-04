@@ -115,12 +115,13 @@
 
     <section id="profileView" class="view">
       <div class="page-title">档案</div>
-      <div class="page-sub">基础资料、成长阶段和记录设置分开管理。只有会改变一段时期分析背景的变化，才需要进入新阶段。</div>
+      <div class="page-sub">基础资料、长期背景和记录设置分开管理。可从实际记录推导的近期作息无需重复填写。</div>
 
       <div class="profile-grid">
         <div class="card section">
           <h3>基础资料</h3>
           <div class="sectiondesc">如果之前填错了，直接修正当前信息即可。</div>
+          <label class="baby-name-field">宝宝名<input id="babyName" type="text" maxlength="40" autocomplete="off" placeholder="例如：小满"></label>
           <div class="fields2">
             <label>出生日期<input id="birthDate" type="date"></label>
             <label>性别
@@ -143,16 +144,16 @@
             </div>
           </div>
 
+          <label class="section-gap">长期喂养方式
+            <select id="feedingMode">
+              <option value="">请选择</option>
+              <option value="母乳为主">母乳为主</option>
+              <option value="配方奶为主">配方奶为主</option>
+              <option value="混合喂养">混合喂养</option>
+              <option value="其它/不固定">其它 / 不固定</option>
+            </select>
+          </label>
           <div class="fields2 section-gap">
-            <label>长期喂养方式
-              <select id="feedingMode">
-                <option value="">请选择</option>
-                <option value="母乳为主">母乳为主</option>
-                <option value="配方奶为主">配方奶为主</option>
-                <option value="混合喂养">混合喂养</option>
-                <option value="其它/不固定">其它 / 不固定</option>
-              </select>
-            </label>
             <label>平日主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
             <label>周末主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
           </div>
@@ -171,7 +172,7 @@
           </div>
 
           <div class="btnrow profile-save-row">
-            <button id="correctProfileBtn" class="secondary">修正当前信息</button>
+            <button id="correctProfileBtn" class="secondary">保存当前档案</button>
             <button id="newStageBtn" class="primary">宝宝进入新阶段</button>
           </div>
 
