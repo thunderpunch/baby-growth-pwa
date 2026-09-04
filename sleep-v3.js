@@ -203,7 +203,21 @@ function warning(title,lines,confirmText,onConfirm){
   box.querySelector("[data-sleep-v3-back]").onclick=()=>box.classList.add("hidden");
   box.querySelector("[data-sleep-v3-force]").onclick=onConfirm;
 }
-function refreshAppDay(){const p=$("pageDate");if(p)p.dispatchEvent(new Event("change",{bubbles:true}));scheduleRefresh(80);}
+function refreshAppDay(){
+  const pageDate=$("pageDate"),metrics=$("metrics");
+  let renderObserver=null,observerTimeout=null;
+  if(metrics&&typeof MutationObserver!=="undefined"){
+    renderObserver=new MutationObserver(()=>{
+      renderObserver.disconnect();
+      if(observerTimeout)clearTimeout(observerTimeout);
+      scheduleRefresh(0);
+    });
+    renderObserver.observe(metrics,{childList:true});
+    observerTimeout=setTimeout(()=>renderObserver?.disconnect(),1500);
+  }
+  if(pageDate)pageDate.dispatchEvent(new Event("change",{bubbles:true}));
+  scheduleRefresh(80);
+}
 async function persistOrdinary(c){await putRecord(c);hideModal();refreshAppDay();showToast("睡眠已保存");}
 async function mergeOrdinary(existing,candidate){
   const starts=[existing.startDateTime,candidate.startDateTime].filter(Boolean).sort(),ends=[existing.endDateTime,candidate.endDateTime].filter(Boolean).sort();
