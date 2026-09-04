@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Repair staged patch script syntax
+        run: sed -i 's/)));$/));/' scripts/apply-profile-slim-once.mjs
       - name: Apply profile refactor
         run: node scripts/apply-profile-slim-once.mjs
       - name: Commit refactor
