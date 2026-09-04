@@ -37,6 +37,15 @@
 .sleep-v3-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .sleep-v3-chip{min-height:40px;padding:7px 9px;border:1px solid #e7dfe8;border-radius:11px;background:#fff;color:#6a606e;font-size:13px;font-weight:600}
 .sleep-v3-chip.active{border-color:#cdb7d8;background:#f7f0fa;color:#70517f;box-shadow:inset 0 0 0 1px #e3d4e9}
+.sleep-v3-environment{display:grid;gap:8px;padding:11px 12px;border:1px solid #eee6ed;border-radius:13px;background:#fcfafc}
+.sleep-v3-environment-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sleep-v3-environment-head b{font-size:13px;color:#554b59}
+.sleep-v3-environment-head span{font-size:11px;color:#9a8f9d;font-weight:600}
+.sleep-v3-environment label{margin:0}
+.sleep-v3-environment>small{font-size:11px;color:#918793;line-height:1.45}
+.sleep-v3-temperature{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
+.sleep-v3-temperature input{margin-top:0!important;min-width:0}
+.sleep-v3-temperature>span{min-width:24px;color:#756b79;font-weight:700;text-align:left}
 .sleep-v3-hint{padding:9px 10px;border-radius:11px;background:#faf7fb;color:#817887;font-size:12px;line-height:1.55}
 .sleep-v3-hint.attention{background:#fff8ef;color:#876541;border:1px solid #f0dfc4}
 .sleep-v3-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px 16px}
