@@ -29,13 +29,19 @@ export function settledConfirmedOfType(records,type){
   return confirmed;
 }
 function isTemplate(record,type){
-  return record?.type===type&&record?.status==="pending"&&(
+  return record?.type===type&&(
     record.source==="recent_milk_template"||record.source==="previous_day_template"||record.templateSourceId
   );
 }
+function isUserProcessedMilkTemplate(record){
+  if(!isTemplate(record,"milk"))return false;
+  if(record.status==="confirmed")return true;
+  return !!record.deleted&&record.deleteReason!=="template_source_changed";
+}
 function hasProcessedTemplate(records,type){
   return records.some(record=>record?.type===type&&(
-    isTemplate(record,type)||record.source==="recent_milk_template"||record.source==="previous_day_template"
+    (isTemplate(record,type)&&record.status==="pending"&&!record.deleted)||
+    record.source==="recent_milk_template"||record.source==="previous_day_template"
   ));
 }
 async function markGenerated(day,type,sourceDate,nowISO){
@@ -52,31 +58,79 @@ async function findNearestSettledConfirmed(dateKey,type,maxDays){
   }
   return null;
 }
-async function ensureMilkTemplates({date,day,nowISO}){
-  if(day.templateGeneratedTypes?.milk)return;
-  const current=await getRecordsByDate(date,{includeDeleted:true});
+export function milkTemplateProjection(source,sourceDate){
+  return {
+    templateSourceId:source.id,
+    templateSourceDate:sourceDate,
+    time:source.time||"",
+    amount:source.amount||"",
+    feedType:source.feedType||""
+  };
+}
+function sameMilkProjection(record,projection){
+  return record.templateSourceId===projection.templateSourceId&&
+    record.templateSourceDate===projection.templateSourceDate&&
+    (record.time||"")===(projection.time||"")&&
+    (record.amount||"")===(projection.amount||"")&&
+    (record.feedType||"")===(projection.feedType||"");
+}
+async function reconcileMilkTemplates({date,day,current,source,nowISO}){
+  const existingTemplates=current.filter(record=>isTemplate(record,"milk"));
+  if(existingTemplates.some(isUserProcessedMilkTemplate)){
+    const sourceDate=existingTemplates.find(record=>record.templateSourceDate)?.templateSourceDate||null;
+    await markGenerated(day,"milk",sourceDate,nowISO);
+    return;
+  }
   if(confirmedOfType(current,"milk").length){
     await markGenerated(day,"milk",null,nowISO);
     return;
   }
-  if(hasProcessedTemplate(current,"milk")){
-    const sourceDate=current.find(record=>record.type==="milk"&&record.templateSourceDate)?.templateSourceDate||null;
+
+  if(!source){
+    for(const template of existingTemplates){
+      if(template.deleted&&template.deleteReason==="template_source_changed")continue;
+      await putRecord({...template,deleted:true,deleteReason:"template_source_changed",updatedAt:nowISO()});
+    }
+    return;
+  }
+
+  const wantedIds=new Set();
+  for(const sourceRecord of source.records){
+    const id=`tpl:${date}:${sourceRecord.id}`;
+    wantedIds.add(id);
+    const projection=milkTemplateProjection(sourceRecord,source.sourceDate);
+    const existing=await getRecord(id);
+    if(existing&&existing.status==="pending"&&!existing.deleted&&sameMilkProjection(existing,projection))continue;
+    if(existing&&isUserProcessedMilkTemplate(existing))continue;
+    await putRecord({
+      ...(existing||{}),
+      id,date,type:"milk",status:"pending",source:"recent_milk_template",
+      ...projection,
+      createdAt:existing?.createdAt||nowISO(),updatedAt:nowISO(),deleted:false,
+      deletedAt:null,deleteReason:null
+    });
+  }
+
+  for(const template of existingTemplates){
+    if(wantedIds.has(template.id)||isUserProcessedMilkTemplate(template))continue;
+    if(template.deleted&&template.deleteReason==="template_source_changed")continue;
+    await putRecord({...template,deleted:true,deleteReason:"template_source_changed",updatedAt:nowISO()});
+  }
+  await markGenerated(day,"milk",source.sourceDate,nowISO);
+}
+async function ensureMilkTemplates({date,day,nowISO}){
+  const current=await getRecordsByDate(date,{includeDeleted:true});
+  if(current.filter(record=>isTemplate(record,"milk")).some(isUserProcessedMilkTemplate)){
+    const sourceDate=current.find(record=>isTemplate(record,"milk")&&record.templateSourceDate)?.templateSourceDate||null;
     await markGenerated(day,"milk",sourceDate,nowISO);
     return;
   }
-  const source=await findNearestSettledConfirmed(date,"milk",MILK_LOOKBACK_DAYS);
-  if(!source)return;
-  for(const record of source.records){
-    const id=`tpl:${date}:${record.id}`;
-    if(await getRecord(id))continue;
-    await putRecord({
-      id,date,type:"milk",status:"pending",source:"recent_milk_template",
-      templateSourceId:record.id,templateSourceDate:source.sourceDate,
-      time:record.time||"",amount:record.amount||"",feedType:record.feedType||"",
-      createdAt:nowISO(),updatedAt:nowISO(),deleted:false
-    });
+  if(confirmedOfType(current,"milk").length){
+    await markGenerated(day,"milk",null,nowISO);
+    return;
   }
-  await markGenerated(day,"milk",source.sourceDate,nowISO);
+  const source=await findNearestSettledConfirmed(date,"milk",MILK_LOOKBACK_DAYS);
+  await reconcileMilkTemplates({date,day,current,source,nowISO});
 }
 async function ensureDietTemplates({date,day,dietStage,nowISO}){
   if(day.templateGeneratedTypes?.diet)return;
