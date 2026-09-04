@@ -1,7 +1,7 @@
-const CACHE_NAME="baby-growth-pwa-v1.4.2-settled-milk-templates";
+const CACHE_NAME="baby-growth-pwa-v1.4.3-ui-template-sync";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
-  "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./date-picker.js","./date-picker.css",
+  "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./date-picker.js","./date-picker.css","./large-text.css",
   "./update-coordinator.js","./gesture-guard.js","./remote-quick-config.js","./icon-theme.js","./icon-theme.css",
   "./record-model.js","./record-templates.js","./sleep-v3.js","./sleep-v3.css","./timeline-v3.js",
   "./history.js","./history.css","./data-io-v3.js","./export-v2.css","./home-config.json","./interaction-guard.css","./db.js",
