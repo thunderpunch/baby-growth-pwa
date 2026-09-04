@@ -11,12 +11,6 @@ function replaceRequired(text,oldValue,newValue,label){
   if(count!==1)throw new Error(`${label}: expected 1 occurrence, got ${count}`);
   return text.replace(oldValue,newValue);
 }
-function replaceRegexRequired(text,regex,replacement,label){
-  let count=0;
-  const after=text.replace(regex,(...args)=>{count++;return typeof replacement==="function"?replacement(...args):replacement;});
-  if(count!==1)throw new Error(`${label}: expected 1 match, got ${count}`);
-  return after;
-}
 
 await edit("app.js",text=>replaceRequired(
   text,
@@ -69,21 +63,6 @@ await edit("index.html",text=>{
   );
   text=replaceRequired(text,'<button id="correctProfileBtn" class="secondary">修正当前信息</button>','<button id="correctProfileBtn" class="secondary">保存当前档案</button>',"make save label static");
   text=replaceRequired(text,'基础资料、成长阶段和记录设置分开管理。只有会改变一段时期分析背景的变化，才需要进入新阶段。','基础资料、长期背景和记录设置分开管理。可从实际记录推导的近期作息无需重复填写。',"update profile subtitle");
-  return text;
-});
-
-await edit("styles.css",text=>replaceRegexRequired(
-  text,
-  /\.segment\{[^}]*\}\.segment button\{[^}]*\}\.segment button\.active\{[^}]*\}/,
-  "",
-  "remove obsolete profile segment styles"
-));
-
-await edit("large-text.css",text=>{
-  const before=text;
-  text=text.replace('.large-text .segment button,\n','');
-  text=text.replace('.large-text .segment,\n.large-text .display-choice','.large-text .display-choice');
-  if(text===before)throw new Error("large-text.css: obsolete segment styles not found");
   return text;
 });
 
