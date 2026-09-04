@@ -1,9 +1,6 @@
 const PROFILE_FIELD_SELECTOR = [
-  "#babyName", "#birthDate", "#sex",
-  "#weekdayBedtime", "#weekdayLatency", "#weekdayNaps", "#weekdayCaregiver",
-  "#weekendBedtime", "#weekendLatency", "#weekendNaps", "#weekendCaregiver",
-  "#sleepEnvironment", "#settlingMethod",
-  "#mainIssue"
+  "#babyName", "#birthDate", "#sex", "#feedingMode",
+  "#weekdayCaregiver", "#weekendCaregiver", "#sleepEnvironment", "#mainIssue"
 ].join(",");
 
 let profileDirty = false;
@@ -56,13 +53,11 @@ function markProfileDirty(){
   clearTimeout(saveAckTimer);
   setProfileStatus("● 有未保存的修改", "dirty");
 }
-
 function markProfileSaved(){
   profileDirty = false;
   clearTimeout(saveAckTimer);
   setProfileStatus("✓ 已保存", "saved");
 }
-
 function markProfileSaving(){
   setProfileStatus("正在保存…");
   clearTimeout(saveAckTimer);
@@ -75,17 +70,11 @@ function bindProfileDirtyTracking(){
   ensureProfileSaveStatus();
 
   document.addEventListener("input", event=>{
-    if(event.target instanceof Element && event.target.matches(PROFILE_FIELD_SELECTOR)){
-      markProfileDirty();
-    }
+    if(event.target instanceof Element && event.target.matches(PROFILE_FIELD_SELECTOR)) markProfileDirty();
   });
-
   document.addEventListener("change", event=>{
-    if(event.target instanceof Element && event.target.matches(PROFILE_FIELD_SELECTOR)){
-      markProfileDirty();
-    }
+    if(event.target instanceof Element && event.target.matches(PROFILE_FIELD_SELECTOR)) markProfileDirty();
   });
-
   document.addEventListener("click", event=>{
     const target = event.target instanceof Element ? event.target : null;
     if(!target) return;
@@ -94,26 +83,18 @@ function bindProfileDirtyTracking(){
       markProfileDirty();
       return;
     }
-
     if(target.closest("#correctProfileBtn")){
       markProfileSaving();
       return;
     }
 
     const navButton = target.closest(".nav button[data-view]");
-    if(
-      navButton &&
-      navButton.dataset.view !== "profile" &&
-      profileDirty &&
-      document.getElementById("profileView")?.classList.contains("active")
-    ){
+    if(navButton && navButton.dataset.view !== "profile" && profileDirty && document.getElementById("profileView")?.classList.contains("active")){
       const leave = window.confirm("档案还有未保存的修改。确定离开并放弃这些修改吗？");
       if(!leave){
         event.preventDefault();
         event.stopImmediatePropagation();
-      }else{
-        profileDirty = false;
-      }
+      }else profileDirty = false;
     }
   }, true);
 
@@ -127,9 +108,7 @@ function bindProfileDirtyTracking(){
   if(toastText){
     const observer = new MutationObserver(()=>{
       const text = toastText.textContent || "";
-      if(text.includes("档案已保存") || text.includes("已创建新的成长阶段")){
-        markProfileSaved();
-      }
+      if(text.includes("档案已保存") || text.includes("已创建新的成长阶段")) markProfileSaved();
     });
     observer.observe(toastText,{childList:true,subtree:true,characterData:true});
   }
@@ -143,8 +122,5 @@ function bindProfileDirtyTracking(){
   setProfileStatus("修改后请点“保存当前档案”");
 }
 
-if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded",bindProfileDirtyTracking,{once:true});
-}else{
-  bindProfileDirtyTracking();
-}
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",bindProfileDirtyTracking,{once:true});
+else bindProfileDirtyTracking();
