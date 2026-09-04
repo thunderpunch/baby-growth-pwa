@@ -114,6 +114,11 @@ body.large-text{
   font-size:17px;
   line-height:1.3;
 }
+.large-text .sleep-v3-environment{padding:13px 14px}
+.large-text .sleep-v3-environment-head b{font-size:17px}
+.large-text .sleep-v3-environment-head span,
+.large-text .sleep-v3-environment>small{font-size:14px;line-height:1.45}
+.large-text .sleep-v3-temperature>span{font-size:18px}
 .large-text .sleep-v3-hint,
 .large-text .sleep-v3-warning span{font-size:15px}
 .large-text .wake-night-choice button b{font-size:17px}
