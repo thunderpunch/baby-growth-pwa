@@ -30,6 +30,7 @@ function duration(r){const a=stampMs(r.startDateTime),b=stampMs(r.endDateTime);r
 function fmtDuration(min){if(min==null)return "—";const h=Math.floor(min/60),m=min%60;return h?(m?`${h}h${m}m`:`${h}h`):`${m}分钟`;}
 function fmtStamp(v){if(!v)return "—";const d=dpart(v),t=tpart(v);return `${d.slice(5).replace("-","/")} ${t}`;}
 function fmtDay(v){if(!v)return "";const [,m,d]=v.split("-");return `${Number(m)}月${Number(d)}日`;}
+function fmtTemperature(value){const n=Number(value);return Number.isFinite(n)?`${Number.isInteger(n)?n:n.toFixed(1)}℃`:"";}
 function nowClock(){const d=new Date();return {date:dateKey(d),time:`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};}
 function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function overlapMinutes(a,b){
@@ -56,6 +57,29 @@ function bindMethodChoices(root){
   });
 }
 function selectedMethod(){return document.querySelector("#sleepV3Modal .sleep-v3-chip.active")?.dataset.sleepV3Method||"";}
+function temperatureField(value){
+  const n=Number(value),shown=Number.isFinite(n)?String(n):"";
+  return `<div class="sleep-v3-environment">
+    <div class="sleep-v3-environment-head"><b>睡眠环境</b><span>选填</span></div>
+    <label>室温<div class="sleep-v3-temperature"><input id="sleepV3RoomTemperature" type="number" inputmode="decimal" min="0" max="50" step="0.1" value="${esc(shown)}" placeholder="例如 24"><span>℃</span></div></label>
+    <small>填写宝宝实际睡眠区域的室温；不知道可以留空。</small>
+  </div>`;
+}
+function readRoomTemperature(){
+  const input=$("sleepV3RoomTemperature"),raw=input?.value?.trim?.()||"";
+  if(!raw)return {valid:true,value:null};
+  const value=Number(raw);
+  if(!Number.isFinite(value)||value<0||value>50)return {valid:false,value:null};
+  return {valid:true,value:Math.round(value*10)/10};
+}
+function applyRoomTemperature(record){
+  const reading=readRoomTemperature();
+  if(!reading.valid)return null;
+  const next={...record};
+  if(reading.value==null)delete next.roomTemperatureC;
+  else next.roomTemperatureC=reading.value;
+  return next;
+}
 async function profileBedtimeMinutes(){
   try{
     const id=await getSetting("currentProfileId","");
@@ -128,13 +152,13 @@ function renderNightCard(pageDate,a){
     return;
   }
   const first=a.night[0],start=first.startDateTime||"",end=a.night.map(r=>r.endDateTime).filter(Boolean).sort().at(-1)||"";
-  const total=a.night.reduce((s,r)=>s+(duration(r)||0),0),early=a.wakeEarly?.wakeTime||a.inferredEarly||"";
+  const total=a.night.reduce((s,r)=>s+(duration(r)||0),0),early=a.wakeEarly?.wakeTime||a.inferredEarly||"",temperature=fmtTemperature(first.roomTemperatureC);
   box.innerHTML=`<div class="last-night-title">昨夜</div>
     <div class="last-night-main">
       <div><small>睡眠</small><b>${fmtStamp(start)} → ${end?fmtStamp(end):"待补充"}</b></div>
       <div><small>时长</small><b>${end?fmtDuration(total):"—"}</b></div>
     </div>
-    <div class="last-night-facts">${first.sleepMethod?`<span>${esc(first.sleepMethod)}</span>`:""}<span>夜醒 ${a.wakes.length} 次</span>${early?`<span class="sleep-v3-warn">疑似早醒 ${early}</span>`:""}${!a.anchor?`<span>系统推测</span>`:""}</div>`;
+    <div class="last-night-facts">${first.sleepMethod?`<span>${esc(first.sleepMethod)}</span>`:""}${temperature?`<span>室温 ${temperature}</span>`:""}<span>夜醒 ${a.wakes.length} 次</span>${early?`<span class="sleep-v3-warn">疑似早醒 ${early}</span>`:""}${!a.anchor?`<span>系统推测</span>`:""}</div>`;
 }
 function patchMetrics(pageDate,a){
   const metrics=$("metrics");if(!metrics)return;
@@ -168,6 +192,7 @@ async function openSleep(record=null){
   showModal(modalShell(record?.id?"修改睡眠":"记录睡眠",
     `<div class="sleep-v3-pair">${timeField("sleepV3Start","睡着时间",tpart(record?.startDateTime))}${timeField("sleepV3End","醒来时间",tpart(record?.endDateTime))}</div>
      <label>入睡方式${methodChoices(record?.sleepMethod||"")}</label>
+     ${temperatureField(record?.roomTemperatureC)}
      ${noteField(record?.note||"")}
      <div class="sleep-v3-hint">无需选择日期；结束时间早于开始时间时按跨午夜处理。</div>
      <div id="sleepV3Warning" class="sleep-v3-warning hidden"></div>`));
@@ -186,9 +211,9 @@ function ordinaryCandidate(){
       end=stamp(ed,et);
     }
   }
-  return {...old,id:old.id||crypto.randomUUID(),date:dpart(end)||dpart(start)||pageDate,type:"sleep",status:"confirmed",deleted:false,
+  return applyRoomTemperature({...old,id:old.id||crypto.randomUUID(),date:dpart(end)||dpart(start)||pageDate,type:"sleep",status:"confirmed",deleted:false,
     startDateTime:start,endDateTime:end,sleepMethod:selectedMethod(),note:$("sleepV3Note")?.value.trim()||"",
-    createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
 }
 async function findSleepConflict(candidate){
   if(duration(candidate)==null)return null;
@@ -222,13 +247,17 @@ async function persistOrdinary(c){await putRecord(c);hideModal();refreshAppDay()
 async function mergeOrdinary(existing,candidate){
   const starts=[existing.startDateTime,candidate.startDateTime].filter(Boolean).sort(),ends=[existing.endDateTime,candidate.endDateTime].filter(Boolean).sort();
   const start=starts[0]||"",end=ends.at(-1)||"";
-  await putRecord({...existing,startDateTime:start,endDateTime:end,date:dpart(end)||dpart(start)||existing.date,
-    sleepMethod:existing.sleepMethod||candidate.sleepMethod||"",note:[existing.note,candidate.note].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join("；"),updatedAt:new Date().toISOString()});
+  const merged={...existing,startDateTime:start,endDateTime:end,date:dpart(end)||dpart(start)||existing.date,
+    sleepMethod:existing.sleepMethod||candidate.sleepMethod||"",roomTemperatureC:existing.roomTemperatureC??candidate.roomTemperatureC,
+    note:[existing.note,candidate.note].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join("；"),updatedAt:new Date().toISOString()};
+  if(merged.roomTemperatureC==null)delete merged.roomTemperatureC;
+  await putRecord(merged);
   if(candidate.id!==existing.id&&modalState?.record?.id)await putRecord({...candidate,deleted:true,deletedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   hideModal();refreshAppDay();showToast("重叠睡眠已合并");
 }
 async function saveOrdinary(){
   const c=ordinaryCandidate();
+  if(!c)return showToast("室温请输入 0–50℃ 之间的数值");
   if(!c.startDateTime&&!c.endDateTime)return showToast("至少填写一个睡眠时间");
   if(c.startDateTime&&c.endDateTime&&stampMs(c.endDateTime)<=stampMs(c.startDateTime))return showToast("醒来时间必须晚于睡着时间");
   const mins=duration(c);
@@ -247,6 +276,7 @@ async function openGoodnight(){
   showModal(modalShell("晚安",
     `${timeField("sleepV3Start","睡着时间",defaultTime)}
      <label>入睡方式${methodChoices(existing?.sleepMethod||"")}</label>
+     ${temperatureField(existing?.roomTemperatureC)}
      ${noteField(existing?.note||"")}
      <div id="sleepV3Warning" class="sleep-v3-warning hidden"></div>`,
      existing?"保存修改":"保存"));
@@ -254,10 +284,11 @@ async function openGoodnight(){
 async function saveGoodnight(){
   const time=$("sleepV3Start")?.value||"";if(!time)return showToast("请填写睡着时间");
   const old=modalState.record||{},start=stamp(modalState.pageDate,time);
-  const record={...old,id:old.id||crypto.randomUUID(),date:modalState.nightKey,type:"sleep",status:"confirmed",deleted:false,
+  const record=applyRoomTemperature({...old,id:old.id||crypto.randomUUID(),date:modalState.nightKey,type:"sleep",status:"confirmed",deleted:false,
     nightAnchor:true,nightKey:modalState.nightKey,startDateTime:start,endDateTime:old.endDateTime||"",
     sleepMethod:selectedMethod(),note:$("sleepV3Note")?.value.trim()||"",
-    createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
+  if(!record)return showToast("室温请输入 0–50℃ 之间的数值");
   if(record.endDateTime&&stampMs(record.endDateTime)<=stampMs(record.startDateTime))return showToast("睡着时间必须早于已经记录的早安时间");
   await putRecord(record);hideModal();refreshAppDay();showToast(old.id?"晚安已更新":"晚安已记录");
 }
@@ -269,6 +300,7 @@ async function openMorning(){
     `${!anchor?.startDateTime?`<div class="sleep-v3-hint attention">昨晚没有找到“晚安”记录，请补充昨晚的睡着时间和入睡方式。</div>`:`<div class="sleep-v3-hint">已带入 ${fmtDay(shiftDateKey(pageDate,-1))} 晚的“晚安”记录。</div>`}
      <div class="sleep-v3-pair">${timeField("sleepV3Start","睡着时间",start)}${timeField("sleepV3End","醒来时间",end)}</div>
      <label>入睡方式${methodChoices(anchor?.sleepMethod||"")}</label>
+     ${temperatureField(anchor?.roomTemperatureC)}
      ${noteField(anchor?.note||"")}
      <div id="sleepV3Warning" class="sleep-v3-warning hidden"></div>`,
      anchor?.endDateTime?"保存修改":"保存"));
@@ -285,9 +317,10 @@ async function saveMorning(force=false){
   if(!et)return showToast("请填写醒来时间");
   const start=stamp(shiftDateKey(modalState.pageDate,-1),st),end=stamp(modalState.pageDate,et),mins=Math.round((stampMs(end)-stampMs(start))/60000);
   if(mins<=0)return showToast("醒来时间必须晚于昨晚睡着时间");
-  const record={...old,id:old.id||crypto.randomUUID(),date:modalState.pageDate,type:"sleep",status:"confirmed",deleted:false,
+  const record=applyRoomTemperature({...old,id:old.id||crypto.randomUUID(),date:modalState.pageDate,type:"sleep",status:"confirmed",deleted:false,
     nightAnchor:true,nightKey:modalState.pageDate,startDateTime:start,endDateTime:end,sleepMethod:selectedMethod(),
-    note:$("sleepV3Note")?.value.trim()||"",createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    note:$("sleepV3Note")?.value.trim()||"",createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
+  if(!record)return showToast("室温请输入 0–50℃ 之间的数值");
   if(mins>18*60&&!force)return warning("整夜睡眠超过 18 小时",[`${fmtStamp(start)} → ${fmtStamp(end)}`,"请确认时间没有填错。"],"确认无误",()=>saveMorning(true));
   const conflict=await findSleepConflict(record);
   if(conflict&&!conflict.nightAnchor&&!force){
@@ -319,7 +352,7 @@ async function injectWakeNightChoice(){
   label.querySelectorAll("[data-wake-night-key]").forEach(b=>b.onclick=e=>{e.preventDefault();activate(b.dataset.wakeNightKey);});
   $("fWake").addEventListener("change",()=>{if(record?.nightKey||forcedWakeNightKey)return;activate(defaultWakeNightKey(pageDate,$("fWake").value));});
 }
-function selectedWakeNightKey(){return document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.wakeNightKey||"";}
+function selectedWakeNightKey(){return document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.sleepV3Method||document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.wakeNightKey||"";}
 function prepareWakeSave(){
   if(!$("fWake")||!$("wakeNightField"))return;
   wakeSaveContext={editingId:editingWakeId,date:$("pageDate")?.value||dateKey(new Date()),wakeTime:$("fWake").value,nightKey:selectedWakeNightKey(),startedAt:Date.now()};
