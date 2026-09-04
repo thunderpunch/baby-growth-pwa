@@ -28,3 +28,4 @@ jobs:
           git add -A
           git commit -m "Finalize streamlined profile"
           git push origin HEAD:main
+# one-time workflow; script removes this file after success
