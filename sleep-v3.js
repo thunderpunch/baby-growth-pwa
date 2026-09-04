@@ -1,4 +1,4 @@
-import {getRecord,getRecordsByDate,getRecordsInRange,putRecord,getSetting,getProfile} from "./db.js";
+import {getRecord,getRecordsByDate,getRecordsInRange,putRecord} from "./db.js";
 
 const $=id=>document.getElementById(id);
 const SLEEP_METHODS=["自主入睡","奶睡","抱睡","拍睡","摇睡","其他"];
@@ -80,22 +80,12 @@ function applyRoomTemperature(record){
   else next.roomTemperatureC=reading.value;
   return next;
 }
-async function profileBedtimeMinutes(){
-  try{
-    const id=await getSetting("currentProfileId","");
-    if(!id)return null;
-    const p=await getProfile(id);
-    return minuteOf(p?.stage?.weekday?.bedtime||p?.stage?.weekend?.bedtime||"");
-  }catch{return null;}
-}
-function circularDistance(a,b){const d=Math.abs(a-b);return Math.min(d,1440-d);}
-function basicClassify(r,bedtimeMin=null){
+function basicClassify(r){
   if(r.nightAnchor)return {kind:"night",confidence:1};
   const mins=duration(r);if(mins==null)return {kind:"uncertain",confidence:0};
   const sm=minuteOf(tpart(r.startDateTime)),em=minuteOf(tpart(r.endDateTime)),cross=dpart(r.startDateTime)!==dpart(r.endDateTime);
   if(cross&&mins>=120)return {kind:"night",confidence:.98};
   if(mins>=300&&(sm>=17*60||em<=10*60))return {kind:"night",confidence:.94};
-  if(bedtimeMin!=null&&sm!=null&&circularDistance(sm,bedtimeMin)<=120&&mins>=180)return {kind:"night",confidence:.9};
   if(!cross&&mins<=210&&sm>=6*60&&em<=18*60+30)return {kind:"nap",confidence:.96};
   if(!cross&&mins<=150&&sm>=7*60&&em<=20*60)return {kind:"nap",confidence:.86};
   return {kind:"uncertain",confidence:.45};
@@ -118,10 +108,9 @@ function wakesForNight(records,nightKey){
 }
 async function analysisForDate(pageDate){
   const previousDate=shiftDateKey(pageDate,-1);
-  const [previous,current,bedtime]=await Promise.all([
+  const [previous,current]=await Promise.all([
     getRecordsByDate(previousDate,{includeDeleted:false}),
-    getRecordsByDate(pageDate,{includeDeleted:false}),
-    profileBedtimeMinutes()
+    getRecordsByDate(pageDate,{includeDeleted:false})
   ]);
   const records=[...previous,...current];
   const anchor=nightAnchorFor(records,pageDate);
@@ -132,7 +121,7 @@ async function analysisForDate(pageDate){
   for(const r of live(records,"sleep")){
     if(r.nightAnchor||nightIds.has(r.id)||duration(r)==null)continue;
     if(dpart(r.startDateTime)!==pageDate||dpart(r.endDateTime)!==pageDate)continue;
-    const c=basicClassify(r,bedtime);
+    const c=basicClassify(r);
     if(c.kind==="nap"&&c.confidence>=.8)naps.push(r);
     else if(c.kind==="uncertain")uncertain.push(r);
   }

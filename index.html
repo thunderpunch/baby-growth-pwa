@@ -132,31 +132,8 @@
             </label>
           </div>
 
-          <h3 class="section-gap">成长阶段</h3>
-          <div class="sectiondesc">例如 3 觉稳定变 2 觉、辅食进入正餐、长期照护方式变化。</div>
-
-          <div class="segment">
-            <button class="active" data-profile-mode="weekday">平日</button>
-            <button data-profile-mode="weekend">周末</button>
-          </div>
-
-          <div id="weekdayProfile" class="profile-mode-pane">
-            <div class="fields2">
-              <label>通常放床<input id="weekdayBedtime" type="time"></label>
-              <label>入睡耗时<input id="weekdayLatency" type="text" placeholder="例如：约60分钟"></label>
-              <label>典型小睡<input id="weekdayNaps" type="text" placeholder="例如：3觉"></label>
-              <label>主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
-            </div>
-          </div>
-
-          <div id="weekendProfile" class="profile-mode-pane hidden">
-            <div class="fields2">
-              <label>通常放床<input id="weekendBedtime" type="time"></label>
-              <label>入睡耗时<input id="weekendLatency" type="text" placeholder="例如：约20分钟"></label>
-              <label>典型小睡<input id="weekendNaps" type="text" placeholder="例如：3觉"></label>
-              <label>主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
-            </div>
-          </div>
+          <h3 class="section-gap">当前阶段</h3>
+          <div class="sectiondesc">只维护无法从日常记录可靠推断的长期背景；近期作息会由记录自动汇总。</div>
 
           <div class="phase-box">
             <label>当前饮食阶段</label>
@@ -164,12 +141,34 @@
               <button type="button" class="optionchip active" data-diet-stage="辅食">辅食阶段</button>
               <button type="button" class="optionchip" data-diet-stage="正餐">正餐阶段</button>
             </div>
-            <div class="hint">首页会直接显示“辅食”或“正餐”，不要求每次重新选主阶段。</div>
           </div>
+
+          <div class="fields2 section-gap">
+            <label>长期喂养方式
+              <select id="feedingMode">
+                <option value="">请选择</option>
+                <option value="母乳为主">母乳为主</option>
+                <option value="配方奶为主">配方奶为主</option>
+                <option value="混合喂养">混合喂养</option>
+                <option value="其它/不固定">其它 / 不固定</option>
+              </select>
+            </label>
+            <label>平日主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
+            <label>周末主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
+          </div>
+
+          <label class="section-gap">长期睡眠环境
+            <textarea id="sleepEnvironment" placeholder="例如：同房婴儿床、遮光、白噪音"></textarea>
+          </label>
 
           <label class="section-gap">当前主要问题
             <textarea id="mainIssue" placeholder="例如：最近连续多天凌晨4点左右醒后很难重新入睡"></textarea>
           </label>
+
+          <div class="profile-insights-shell">
+            <div class="profile-insights-head"><b>近期规律</b><small>最近14天 · 从已确认睡眠自动推导，无需手填</small></div>
+            <div id="profileInsights"></div>
+          </div>
 
           <div class="btnrow profile-save-row">
             <button id="correctProfileBtn" class="secondary">修正当前信息</button>

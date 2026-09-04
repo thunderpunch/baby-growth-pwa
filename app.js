@@ -5,6 +5,7 @@ import {
   getLatestImportBackup,deleteImportBackup,replaceAllData
 } from "./db.js";
 import {ensureRecordTemplates,templateSourceLabel} from "./record-templates.js";
+import {renderProfileInsights} from "./profile-insights.js";
 
 const $=id=>document.getElementById(id);
 const qsa=selector=>Array.from(document.querySelectorAll(selector));
@@ -158,7 +159,7 @@ async function init(){
   $("pageDate").value=state.date;
   setExportDates();
   bindStaticEvents();
-  await loadProfileUI();
+  await loadProfileUI(false);
   renderModuleSettings();
   await loadDay();
 }
@@ -176,11 +177,6 @@ function bindStaticEvents(){
   };
   $("contextNote").addEventListener("input",debounce(saveContext,650));
 
-  qsa("[data-profile-mode]").forEach(button=>button.onclick=()=>{
-    qsa("[data-profile-mode]").forEach(item=>item.classList.toggle("active",item===button));
-    $("weekdayProfile").classList.toggle("hidden",button.dataset.profileMode!=="weekday");
-    $("weekendProfile").classList.toggle("hidden",button.dataset.profileMode!=="weekend");
-  });
   qsa("[data-diet-stage]").forEach(button=>button.onclick=()=>{
     qsa("[data-diet-stage]").forEach(item=>item.classList.toggle("active",item===button));
     state.dietStage=button.dataset.dietStage;
@@ -223,7 +219,7 @@ function bindStaticEvents(){
 function showView(name){
   qsa(".view").forEach(view=>view.classList.toggle("active",view.id===`${name}View`));
   qsa(".nav button").forEach(button=>button.classList.toggle("active",button.dataset.view===name));
-  if(name==="profile")void loadProfileUI();
+  if(name==="profile")void loadProfileUI(true);
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -586,44 +582,43 @@ async function deleteRecord(id){
   });
 }
 
-async function loadProfileUI(){
-  if(!state.currentProfile){
-    $("profileVersionInfo").innerHTML="<b>尚未创建档案。</b> 首次填写后点“修正当前信息”即可创建 V1。";
-    return;
-  }
+async function loadProfileUI(includeInsights=false){
   const profile=state.currentProfile;
-  $("birthDate").value=profile.base?.birthDate||"";
-  $("sex").value=profile.base?.sex||"";
-  $("weekdayBedtime").value=profile.stage?.weekday?.bedtime||"";
-  $("weekdayLatency").value=profile.stage?.weekday?.latency||"";
-  $("weekdayNaps").value=profile.stage?.weekday?.naps||"";
-  $("weekdayCaregiver").value=profile.stage?.weekday?.caregiver||"";
-  $("weekendBedtime").value=profile.stage?.weekend?.bedtime||"";
-  $("weekendLatency").value=profile.stage?.weekend?.latency||"";
-  $("weekendNaps").value=profile.stage?.weekend?.naps||"";
-  $("weekendCaregiver").value=profile.stage?.weekend?.caregiver||"";
-  $("mainIssue").value=profile.stage?.mainIssue||"";
-  state.dietStage=profile.stage?.dietStage||"辅食";
+  if(profile){
+    const stage=profile.stage||{};
+    if($("babyName"))$("babyName").value=profile.base?.name||"";
+    $("birthDate").value=profile.base?.birthDate||"";
+    $("sex").value=profile.base?.sex||"";
+    $("feedingMode").value=stage.feedingMode||"";
+    $("weekdayCaregiver").value=stage.caregivers?.weekday||stage.weekday?.caregiver||"";
+    $("weekendCaregiver").value=stage.caregivers?.weekend||stage.weekend?.caregiver||"";
+    $("sleepEnvironment").value=stage.sleepEnvironment||"";
+    $("mainIssue").value=stage.mainIssue||"";
+    state.dietStage=stage.dietStage||"辅食";
+    $("profileVersionInfo").innerHTML=`当前档案：<b>V${escapeHTML(profile.version)}</b> · 从 <b>${escapeHTML(profile.effectiveFrom)}</b> 起生效。近期规律由实际记录自动计算，不需要维护“典型小睡”等重复信息。`;
+  }else{
+    $("profileVersionInfo").innerHTML="<b>尚未创建档案。</b> 首次填写后点“保存当前档案”即可创建 V1。";
+  }
   qsa("[data-diet-stage]").forEach(button=>button.classList.toggle("active",button.dataset.dietStage===state.dietStage));
-  $("profileVersionInfo").innerHTML=`当前档案：<b>V${escapeHTML(profile.version)}</b> · 从 <b>${escapeHTML(profile.effectiveFrom)}</b> 起生效。重复导出同一版本不会被当成新阶段。`;
+  if(includeInsights)await renderProfileInsights($("profileInsights"),localDateKey(new Date());
 }
 function profileFormValue(){
+  const current=state.currentProfile||{},base=current.base||{};
   return {
-    base:{birthDate:$("birthDate").value,sex:$("sex").value},
+    base:{
+      ...base,
+      name:$("babyName")?.value.trim()||base.name||"",
+      birthDate:$("birthDate").value,
+      sex:$("sex").value
+    },
     stage:{
       dietStage:state.dietStage,
-      weekday:{
-        bedtime:$("weekdayBedtime").value,
-        latency:$("weekdayLatency").value.trim(),
-        naps:$("weekdayNaps").value.trim(),
-        caregiver:$("weekdayCaregiver").value.trim()
+      feedingMode:$("feedingMode").value,
+      caregivers:{
+        weekday:$("weekdayCaregiver").value.trim(),
+        weekend:$("weekendCaregiver").value.trim()
       },
-      weekend:{
-        bedtime:$("weekendBedtime").value,
-        latency:$("weekendLatency").value.trim(),
-        naps:$("weekendNaps").value.trim(),
-        caregiver:$("weekendCaregiver").value.trim()
-      },
+      sleepEnvironment:$("sleepEnvironment").value.trim(),
       mainIssue:$("mainIssue").value.trim()
     }
   };
@@ -641,7 +636,7 @@ async function saveProfile(newStage){
     state.currentProfile=profile;
   }else{
     openModal("宝宝进入新阶段",`<label>从哪一天开始生效<input id="stageEffectiveFrom" type="date" value="${state.date}"></label>
-      <div class="smallnote">例如 3 觉稳定变 2 觉、辅食正式过渡到正餐、长期照护方式发生变化。只是填错内容请不要创建新阶段。</div>`,
+      <div class="smallnote">例如辅食正式过渡到正餐，或长期喂养方式、主要照护者、睡眠环境发生变化。小睡次数和通常入睡时间会从记录自动推导，不需要为了它们单独建阶段。只是填错内容请不要创建新阶段。</div>`,
     {type:"newStage",onSave:async()=>{
       const profile={
         id:uuid(),version:(state.currentProfile.version||1)+1,effectiveFrom:$("stageEffectiveFrom").value,
@@ -650,14 +645,14 @@ async function saveProfile(newStage){
       await putProfile(profile);
       await setSetting("currentProfileId",profile.id);
       state.currentProfile=profile;
-      await loadProfileUI();
+      await loadProfileUI(true);
       renderQuickbar();
       showToast("已创建新的成长阶段");
     }});
     return;
   }
   state.dietStage=state.currentProfile.stage?.dietStage||"辅食";
-  await loadProfileUI();
+  await loadProfileUI(true);
   renderQuickbar();
   showToast("档案已保存");
 }
