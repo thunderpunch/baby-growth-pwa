@@ -129,6 +129,7 @@
 {
   "type": "sleep",
   "sleepMethod": "抱睡",
+  "roomTemperatureC": 24.5,
   "note": "",
   "nightAnchor": false,
   "nightKey": null,
@@ -143,6 +144,8 @@
 
 - `nightAnchor: true`：由“晚安 / 早安”明确形成的夜间主睡。
 - `nightKey`：该晚夜间睡眠最终结束 / 早安日期。
+- `roomTemperatureC`：可选数值，单位 ℃。表示宝宝实际睡眠区域的室温；未知时字段可以不存在。它属于睡眠环境事实，不参与 nap / night 分类，也不应单独用于因果诊断。
+- 晚安与早安编辑的是同一条 `nightAnchor`；早安应继承晚安已填写的 `roomTemperatureC`，用户仍可修正。
 
 ### Wake
 
@@ -278,4 +281,5 @@
 - `deleted: true` 不计入统计。
 - 不根据缺失字段虚构事实。
 - nap / night 分类可由分析层推断，但不要改写原始记录。
+- `roomTemperatureC` 只作为睡眠环境变量参与相关性观察；不要因为单次温度值直接推断夜醒、早醒或睡眠质量的因果关系。
 - 持续背景优先结合当时生效的 profile version，而不是只看最新档案。
