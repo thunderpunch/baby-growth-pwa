@@ -1,0 +1,143 @@
+/* Large-text mode is a presentation layer, not a second layout system.
+   Increase text and touch targets while allowing controls to grow vertically
+   instead of clipping or forcing horizontal overflow. */
+
+body.large-text{
+  --base-font:20px;
+  --control-h:56px;
+}
+
+.large-text .brand-copy b{font-size:24px}
+.large-text .brand-copy small{font-size:16px}
+.large-text .page-title{font-size:34px;line-height:1.2}
+.large-text .page-sub{font-size:18px;line-height:1.6}
+.large-text .hero-copy h1{font-size:31px}
+.large-text .hero-copy p{font-size:18px}
+.large-text .card-title,
+.large-text .section h3,
+.large-text .data-card h3,
+.large-text .timeline-head b{font-size:21px}
+.large-text .sectiondesc,
+.large-text .card-sub,
+.large-text .quick-head small,
+.large-text .smallnote,
+.large-text .settings-note{font-size:15px;line-height:1.55}
+
+.large-text label{font-size:18px;line-height:1.4}
+.large-text input,
+.large-text select,
+.large-text textarea,
+.large-text .custom-date-trigger{font-size:20px;min-height:var(--control-h)}
+.large-text textarea{line-height:1.55}
+.large-text .custom-date-trigger:not(.custom-date-trigger-compact){height:var(--control-h)}
+
+/* Important actions/selectors must actually look larger, not only inherit a
+   slightly larger body font. Height stays content-driven so wrapped labels are
+   never cropped. */
+.large-text .primary,
+.large-text .secondary,
+.large-text .context-toggle,
+.large-text .now-btn,
+.large-text .rowactions button,
+.large-text .segment button,
+.large-text .display-choice button,
+.large-text .optionchip,
+.large-text .pill,
+.large-text .quick-value,
+.large-text .filelabel{
+  height:auto;
+  min-height:54px;
+  padding-top:10px;
+  padding-bottom:10px;
+  font-size:18px;
+  line-height:1.3;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+
+.large-text .segment,
+.large-text .display-choice{align-items:stretch}
+.large-text .segment button,
+.large-text .display-choice button{width:100%}
+
+.large-text .quick{min-height:86px;padding:12px 14px}
+.large-text .qicon{width:42px;height:42px;flex-basis:42px}
+.large-text .qcopy b{font-size:20px;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+.large-text .qcopy small{font-size:15px;line-height:1.4;white-space:normal;overflow:visible;text-overflow:clip}
+
+.large-text .metric{padding:13px 14px}
+.large-text .metric b{font-size:24px}
+.large-text .metric small{font-size:15px;white-space:normal;line-height:1.35;overflow:visible;text-overflow:clip}
+
+.large-text .row{row-gap:8px}
+.large-text .rowmain{font-size:20px;line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip}
+.large-text .rowsub{font-size:15px;line-height:1.45;white-space:normal;overflow:visible;text-overflow:clip}
+.large-text .time{font-size:18px}
+.large-text .pending-badge{font-size:13px}
+
+.large-text .module{min-height:82px;padding:13px 14px}
+.large-text .modulecopy b{font-size:18px;line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip}
+.large-text .modulecopy small{font-size:14px;line-height:1.45;white-space:normal;overflow:visible;text-overflow:clip}
+.large-text .toggle{width:48px;height:28px;flex-basis:48px}
+.large-text .toggle:after{width:24px;height:24px}
+.large-text .toggle.on:after{left:22px}
+
+.large-text .mode{min-height:138px;padding:15px}
+.large-text .mode b{font-size:19px;line-height:1.35}
+.large-text .mode span{font-size:15px;line-height:1.55}
+.large-text .filebox b{font-size:18px}
+.large-text .filebox p,
+.large-text .import-preview{font-size:15px;line-height:1.55}
+
+.large-text .nav button{font-size:16px;min-height:64px;line-height:1.25}
+.large-text .nav button svg{width:24px;height:24px}
+
+/* Sleep owns its own component stylesheet, but display size is a global user
+   preference, so its readable/action text participates here as well. */
+.large-text .night-entry{min-height:88px}
+.large-text .night-entry-copy b{font-size:20px}
+.large-text .night-entry-copy small{font-size:14px;line-height:1.45}
+.large-text .last-night-summary::before{font-size:16px}
+.large-text .last-night-main small{font-size:13px}
+.large-text .last-night-main b{font-size:18px;white-space:normal}
+.large-text .last-night-empty b{font-size:17px}
+.large-text .last-night-empty span{font-size:14px}
+.large-text .last-night-facts span{font-size:13px;padding:6px 9px}
+.large-text .sleep-v3-head b{font-size:22px}
+.large-text .sleep-v3-body label{font-size:17px}
+.large-text .sleep-v3-time button,
+.large-text .sleep-v3-chip,
+.large-text .wake-night-choice button{
+  height:auto;
+  min-height:52px;
+  font-size:17px;
+  line-height:1.3;
+}
+.large-text .sleep-v3-hint,
+.large-text .sleep-v3-warning span{font-size:15px}
+.large-text .wake-night-choice button b{font-size:17px}
+.large-text .wake-night-choice button span{font-size:14px}
+
+.large-text .custom-date-title{font-size:21px}
+.large-text .custom-date-weekdays{font-size:15px}
+.large-text .custom-date-day{font-size:18px}
+.large-text .custom-date-actions button{font-size:18px;min-height:50px}
+/* Keep the compact Today title-bar date control bounded so large text does not
+   force the top bar wider than the viewport. */
+.large-text .date-nav .custom-date-trigger-compact{font-size:17px;height:42px;min-height:42px;white-space:nowrap}
+.large-text .date-nav button{font-size:17px}
+
+@media(max-width:760px){
+  .large-text .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .large-text .quickbar{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .large-text .profile-save-row .primary,
+  .large-text .profile-save-row .secondary{flex:1 1 220px}
+}
+
+@media(max-width:560px){
+  .large-text .metrics{grid-template-columns:1fr 1fr}
+  .large-text .quickbar{grid-template-columns:1fr}
+  .large-text .modal-actions{grid-template-columns:1fr 1fr}
+  .large-text .modal-actions #modalSaveContinue{grid-column:1/-1}
+}
