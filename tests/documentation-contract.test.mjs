@@ -22,6 +22,8 @@ assert.match(agents,/完整 JSON 快照|年度完整 JSON|完整 JSON 主档/,"A
 assert.match(agents,/聊天记忆不是唯一事实源/,"AGENTS.md must require repository documentation as durable context");
 assert.match(agents,/档案与近期规律[\s\S]*最近 ?14 天/,"AGENTS.md must preserve derived Profile insight policy");
 assert.match(agents,/已退出当前档案 UI[\s\S]*通常放床|通常放床[\s\S]*已退出当前档案 UI/,"AGENTS.md must preserve removal of redundant manual Profile routines");
+assert.match(agents,/快速记录按钮[\s\S]*不在按钮里追加动态的今日次数 \/ 最近时间/,"AGENTS.md must preserve simple quick-entry tiles");
+assert.match(agents,/History 日卡[\s\S]*粑粑次数与时间[\s\S]*不新增单独“最近一次”/,"AGENTS.md must preserve richer History cards without last-occurrence query UI");
 assert.match(agents,/Google Drive[\s\S]*权威归档/,"AGENTS.md must identify private Drive storage as the long-term analysis archive");
 assert.match(agents,/正常分析不得默认扫描所有历史原始文件/,"AGENTS.md must preserve bounded archive retrieval");
 assert.match(schema,/caregivers[\s\S]*weekday[\s\S]*weekend/,"JSON schema docs must describe current caregiver profile structure");

@@ -5,6 +5,7 @@ import {
   getLatestImportBackup,deleteImportBackup,replaceAllData
 } from "./db.js";
 import {ensureRecordTemplates,templateSourceLabel} from "./record-templates.js";
+import {entryPreview,potentialDuplicate,recentConfirmed} from "./record-entry-utils.js";
 import {renderProfileInsights} from "./profile-insights.js";
 
 const $=id=>document.getElementById(id);
@@ -288,6 +289,14 @@ function recordTime(record){
 function renderTimeline(records){
   const live=records.filter(record=>!record.deleted).sort((a,b)=>recordTime(a).localeCompare(recordTime(b)));
   const templates=pending(live);
+  const detail=$("dayDetails"),count=$("timelineCount");
+  if(count)count.textContent=`${live.length} 条${templates.length?` · ${templates.length} 待确认`:""}`;
+  if(detail){
+    const sameDate=detail.dataset.date===state.date;
+    if(!sameDate)detail.open=templates.length>0;
+    else if(templates.length)detail.open=true;
+    detail.dataset.date=state.date;
+  }
   if(templates.length){
     $("pendingSummary").classList.remove("hidden");
     $("pendingSummary").innerHTML=`<div><b>还有 ${templates.length} 条待确认模板</b><small>　未确认前不算正式记录</small></div>`;
@@ -433,6 +442,15 @@ function closeModal(){
 function timeField(id,label,value=""){
   return `<label>${label}<div class="time-row"><input id="${id}" type="time" value="${escapeHTML(value)}"><button type="button" class="now-btn" data-now="${id}">现在</button></div></label>`;
 }
+function recentEntryMarkup(type,records,currentId=""){
+  const all=(records||[]).filter(record=>record.type===type&&record.status==="confirmed"&&!record.deleted);
+  const recent=recentConfirmed(records,type,{excludeId:currentId,limit:3});
+  if(!all.length||!recent.length)return "";
+  return `<section class="record-recent" aria-label="今天最近同类记录">
+    <div class="record-recent-title"><div><b>今天已记录 ${all.length} 次</b><small>补录前可以先确认一下</small></div><span>最近 ${recent.length} 条</span></div>
+    <div class="record-recent-list">${recent.map(item=>{const preview=entryPreview(item,{dietStage:state.dietStage});return `<button type="button" class="record-recent-item" data-recent-edit-id="${escapeHTML(item.id)}"><time>${escapeHTML(preview.time)}</time><span><b>${escapeHTML(preview.main)}</b>${preview.sub?`<small>${escapeHTML(preview.sub)}</small>`:""}</span><em>修改</em></button>`;}).join("")}</div>
+  </section>`;
+}
 async function openRecordModal(type,record=null){
   if(type==="sleep")return;
   const item=record||{};
@@ -511,6 +529,10 @@ async function openRecordModal(type,record=null){
   }else{
     return;
   }
+  if(["milk","diet","diaper"].includes(type)){
+    const dayRecords=await getRecordsByDate(state.date,{includeDeleted:false});
+    body=`${recentEntryMarkup(type,dayRecords,item.id||"")}${body}<div id="recordDuplicateWarning" class="record-duplicate-warning hidden"></div>`;
+  }
   openModal(title,body,{type,record:item});
 }
 function openMoreModal(){
@@ -522,6 +544,7 @@ function openMoreModal(){
 }
 function enhanceModal(){
   qsa("[data-now]").forEach(button=>button.onclick=()=>fillNow($(button.dataset.now)));
+  qsa("[data-recent-edit-id]").forEach(button=>button.onclick=event=>{event.preventDefault();void editRecord(button.dataset.recentEditId);});
   qsa(".optionchips").forEach(group=>{
     const chips=Array.from(group.querySelectorAll(".optionchip"));
     chips.forEach(chip=>chip.onclick=event=>{
@@ -692,6 +715,17 @@ async function undoLatestImport(){
   location.reload();
 }
 
+function showDuplicateWarning(existing,continueAfter){
+  const box=$("recordDuplicateWarning");
+  if(!box)return false;
+  const preview=entryPreview(existing,{dietStage:state.dietStage});
+  box.classList.remove("hidden");
+  box.innerHTML=`<b>可能已经记录过这一条</b><span>${escapeHTML(preview.time)} 已有：${escapeHTML(preview.main)}${preview.sub?` · ${escapeHTML(preview.sub)}`:""}</span><div><button type="button" class="secondary" data-duplicate-edit>修改已有</button><button type="button" class="primary" data-duplicate-keep>仍然新增</button></div>`;
+  box.querySelector("[data-duplicate-edit]").onclick=()=>void editRecord(existing.id);
+  box.querySelector("[data-duplicate-keep]").onclick=()=>{if(!state.modal)return;state.modal.duplicateAccepted=true;void saveModal(continueAfter);};
+  box.scrollIntoView({block:"nearest",behavior:"smooth"});
+  return true;
+}
 async function saveModal(continueAfter){
   if(state.modal?.onSave){
     const save=state.modal.onSave;
@@ -766,6 +800,12 @@ async function saveModal(continueAfter){
     base.note=$("fNote").value.trim();
   }else{
     return closeModal();
+  }
+
+  if(!state.modal.duplicateAccepted&&["milk","diet","diaper"].includes(type)){
+    const records=await getRecordsByDate(state.date,{includeDeleted:false});
+    const duplicate=potentialDuplicate(base,records);
+    if(duplicate&&showDuplicateWarning(duplicate,continueAfter))return;
   }
 
   markSaving();

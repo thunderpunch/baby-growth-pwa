@@ -62,15 +62,15 @@
       <div id="quickbar" class="quickbar"></div>
 
       <div class="workspace">
-        <div class="card timeline-card">
-          <div class="timeline-head">
-            <div><b>当天流水</b> <small id="timelineSub"></small></div>
-            <small>待确认 ≠ 已记录</small>
-          </div>
+        <details id="dayDetails" class="card timeline-card day-details">
+          <summary class="timeline-head">
+            <div><b>当天详情</b> <small id="timelineSub"></small></div>
+            <small id="timelineCount">查看完整记录</small>
+          </summary>
           <div id="pendingSummary" class="pending-summary hidden"></div>
           <div id="timeline" class="timeline"></div>
-          <div class="demo-note">只有已确认记录会进入统计和导出分析；待确认模板仅用于减少重复录入。</div>
-        </div>
+          <div class="demo-note">完整流水主要用于当天复盘；待确认模板未确认前不计入正式统计和导出分析。</div>
+        </details>
 
         <div class="sidecol">
           <button type="button" class="night-entry" data-night-morning>

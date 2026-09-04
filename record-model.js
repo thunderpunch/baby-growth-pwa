@@ -170,6 +170,14 @@ export function sleepLocalRange(record){
   const start=temporalNode(record,"start"),end=temporalNode(record,"end");
   return {startDate:start?.date||"",startTime:start?.time||"",endDate:end?.date||"",endTime:end?.time||""};
 }
+export function isStrictDayNap(record){
+  if(record?.type!=="sleep"||record.nightAnchor)return false;
+  const duration=recordDurationMinutes(record),range=sleepLocalRange(record);
+  if(!Number.isFinite(duration)||duration<10||duration>210||!range.startDate||range.startDate!==range.endDate)return false;
+  const toMinutes=value=>{if(!validClock(value))return null;const [hour,minute]=value.split(":").map(Number);return hour*60+minute;};
+  const start=toMinutes(range.startTime),end=toMinutes(range.endTime);
+  return start!=null&&end!=null&&start>=5*60&&end<=21*60;
+}
 export function wakeLocalRange(record){
   const wake=temporalNode(record,"wake"),resleep=temporalNode(record,"resleep");
   return {wakeDate:wake?.date||"",wakeTime:wake?.time||"",resleepDate:resleep?.date||"",resleepTime:resleep?.time||""};

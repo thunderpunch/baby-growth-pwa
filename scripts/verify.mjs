@@ -48,6 +48,7 @@ runTest("app contract tests","tests/app-contract.test.mjs");
 runTest("iPad layout regression tests","tests/ipad-layout.test.mjs");
 runTest("date picker regression tests","tests/date-picker.test.mjs");
 runTest("record template policy regressions","tests/record-templates.test.mjs");
+runTest("record entry review UX regressions","tests/record-entry-utils.test.mjs");
 runTest("profile structure contracts","tests/profile-contract.test.mjs");
 runTest("profile insight regressions","tests/profile-insights.test.mjs");
 runTest("sleep environment temperature regressions","tests/sleep-environment.test.mjs");

@@ -49,6 +49,8 @@ All pre-release verification checks passed.
 
 `tests/record-templates.test.mjs`
 
+`tests/record-entry-utils.test.mjs`
+
 `tests/profile-contract.test.mjs`
 
 `tests/profile-insights.test.mjs`
@@ -67,6 +69,9 @@ All pre-release verification checks passed.
 - 某来源日仍有未处理吃奶 pending 时不能向后传播；全部确认/跳过后，剩余 confirmed milk 才能成为后续来源；
 - 目标日模板尚未开始处理时必须继续同步来源日的时间、奶量、类型和记录集合；目标日一旦开始确认/跳过则冻结，不后台重写用户决策；
 - 奶和饮食模板策略独立，模板生成不得使用 `getAllRecords()` 全历史扫描，也不得恢复 DOM 监听桥；
+- 高频补录弹窗显示最近同类已确认事实，疑似重复只提醒不阻止；Sleep 继续只使用自身重叠冲突 owner；
+- Today 流水保持可折叠“当天详情”，待确认存在时自动展开；快速记录按钮不得堆叠动态次数 / 最近时间；
+- History 日卡直接展示粑粑次数与时间等一日摘要，并继续使用范围查询；禁止新增独立“最近一次”历史扫描；
 - Profile 当前 UI 不得恢复手填“通常放床 / 入睡耗时 / 典型小睡 / 常用哄睡方式”；长期背景字段必须保持明确；
 - `profile-insights.js` 只做最近 14 天有界查询，样本不足不宣称规律，且不得写回 Profile/事实记录；
 - Sleep 分类不得重新依赖手填 Profile bedtime；

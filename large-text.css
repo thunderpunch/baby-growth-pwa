@@ -7,6 +7,8 @@ body.large-text{
   --control-h:56px;
 }
 
+.large-text .record-recent-title b,.large-text .sleep-v3-recent>div b{font-size:18px}.large-text .record-recent-title small,.large-text .record-recent-title>span,.large-text .sleep-v3-recent>div small{font-size:15px}.large-text .record-recent-item,.large-text .sleep-v3-recent>button{min-height:58px}.large-text .record-recent-item b,.large-text .record-recent-item time,.large-text .sleep-v3-recent span,.large-text .sleep-v3-recent time{font-size:17px}.large-text .record-recent-item small,.large-text .record-recent-item em,.large-text .sleep-v3-recent em{font-size:15px}.large-text .record-duplicate-warning>span{font-size:16px}.large-text .history-fact span{font-size:14px}.large-text .history-fact b{font-size:18px}.large-text .history-grid{grid-template-columns:1fr}
+
 .large-text .brand-copy b{font-size:24px}
 .large-text .brand-copy small{font-size:16px}
 .large-text .page-title{font-size:34px;line-height:1.2}

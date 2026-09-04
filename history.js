@@ -1,5 +1,5 @@
 import {getDaysInRange,getRecordsInRange} from "./db.js";
-import {shiftDateKey,validDateKey} from "./record-model.js";
+import {isStrictDayNap,occurredLocal,recordDurationMinutes,shiftDateKey,validDateKey,wakeLocalRange} from "./record-model.js";
 
 const $=id=>document.getElementById(id);
 const pad2=n=>String(n).padStart(2,"0");
@@ -64,6 +64,48 @@ function escapeHTML(value=""){
 
 function hasDayContext(day){
   return !!((day?.context?.tags||[]).length||day?.context?.note||day?.nightSleep?.sleepAt||day?.nightSleep?.wakeAt);
+}
+function fmtDuration(minutes){
+  if(!Number.isFinite(minutes)||minutes<=0)return "";
+  const rounded=Math.round(minutes),hour=Math.floor(rounded/60),rest=rounded%60;
+  return hour?(rest?`${hour}h${rest}m`:`${hour}h`):`${rest}分钟`;
+}
+export function summarizeHistoryDay(date,records,day=null){
+  const confirmed=(records||[]).filter(record=>record.status==="confirmed"&&!record.deleted);
+  const sleeps=confirmed.filter(record=>record.type==="sleep");
+  const nights=sleeps.filter(record=>record.nightAnchor&&Number.isFinite(recordDurationMinutes(record)));
+  const naps=sleeps.filter(record=>isStrictDayNap(record)&&record.date===date);
+  const milk=confirmed.filter(record=>record.type==="milk");
+  const diet=confirmed.filter(record=>record.type==="diet");
+  const diapers=confirmed.filter(record=>record.type==="diaper");
+  const stools=diapers.filter(record=>String(record.diaperType||"").includes("便"));
+  const wakes=confirmed.filter(record=>record.type==="wake");
+  const health=confirmed.filter(record=>record.type==="health");
+  const temperatures=health.map(record=>Number(record.temperature)).filter(Number.isFinite);
+  const stoolTimes=stools.map(record=>occurredLocal(record).time||record.time||"").filter(Boolean).sort();
+  const wakeTimes=wakes.map(record=>wakeLocalRange(record).wakeTime||record.wakeTime||"").filter(Boolean).sort();
+  return {
+    confirmedCount:confirmed.length,
+    pendingCount:(records||[]).filter(record=>record.status==="pending"&&!record.deleted).length,
+    nightMinutes:nights.reduce((sum,record)=>sum+(recordDurationMinutes(record)||0),0),
+    napCount:naps.length,
+    napMinutes:naps.reduce((sum,record)=>sum+(recordDurationMinutes(record)||0),0),
+    milkCount:milk.length,
+    milkTotal:milk.reduce((sum,record)=>sum+(Number(record.amount)||0),0),
+    dietCount:diet.length,
+    diaperCount:diapers.length,
+    stoolCount:stools.length,
+    stoolTimes,
+    wakeCount:wakes.length,
+    wakeTimes,
+    healthCount:health.length,
+    maxTemperature:temperatures.length?Math.max(...temperatures):null,
+    contextTags:day?.context?.tags||[],
+    hasContext:hasDayContext(day)
+  };
+}
+function historyFact(label,value,extra=""){
+  return `<div class="history-fact ${extra}"><span>${escapeHTML(label)}</span><b>${escapeHTML(value)}</b></div>`;
 }
 
 function ensureStyle(){
@@ -168,24 +210,25 @@ function recordMap(records){
 }
 
 function renderCard(date,records,day){
-  const confirmed=records.filter(r=>r.status==="confirmed");
-  const pending=records.filter(r=>r.status==="pending").length;
-  const sleeps=confirmed.filter(r=>r.type==="sleep").length;
-  const milk=confirmed.filter(r=>r.type==="milk").reduce((sum,r)=>sum+(Number(r.amount)||0),0);
-  const diapers=confirmed.filter(r=>r.type==="diaper").length;
-  const context=hasDayContext(day)?`<span class="history-context-mark">有备注</span>`:"";
-  const pendingText=pending?`<span class="history-pending-mark">${pending} 条待确认</span>`:"";
+  const summary=summarizeHistoryDay(date,records,day);
+  const context=summary.hasContext?`<span class="history-context-mark">${summary.contextTags.length?escapeHTML(summary.contextTags.join(" · ")):"有备注"}</span>`:"";
+  const pendingText=summary.pendingCount?`<span class="history-pending-mark">${summary.pendingCount} 条待确认</span>`:"";
+  const facts=[];
+  if(summary.healthCount)facts.push(historyFact("健康",summary.maxTemperature!=null?`最高 ${summary.maxTemperature}℃`:`${summary.healthCount} 条记录`,"history-fact-alert"));
+  if(summary.nightMinutes)facts.push(historyFact("夜睡",fmtDuration(summary.nightMinutes)));
+  if(summary.napCount)facts.push(historyFact("小睡",`${summary.napCount}次 · ${fmtDuration(summary.napMinutes)}`));
+  if(summary.milkCount)facts.push(historyFact("吃奶",`${summary.milkCount}次${summary.milkTotal?` · ${summary.milkTotal}ml`:""}`));
+  facts.push(historyFact("粑粑",summary.stoolCount?`${summary.stoolCount}次${summary.stoolTimes.length?` · ${summary.stoolTimes.join(" / ")}`:""}`:"无","history-fact-stool"));
+  if(summary.dietCount)facts.push(historyFact("辅食 / 饮食",`${summary.dietCount}次`));
+  if(summary.diaperCount)facts.push(historyFact("尿布",`${summary.diaperCount}次`));
+  if(summary.wakeCount)facts.push(historyFact("夜醒",`${summary.wakeCount}次${summary.wakeTimes.length?` · ${summary.wakeTimes[0]}`:""}`));
   return `<article class="history-card">
     <div class="history-top">
       <div><b>${historyDateLabel(date)}</b></div>
-      <button type="button" class="secondary" data-history-date="${escapeHTML(date)}">查看</button>
+      <button type="button" class="secondary" data-history-date="${escapeHTML(date)}">查看当天</button>
     </div>
-    <div class="history-card-meta"><span>${confirmed.length} 条记录</span>${pendingText}${context}</div>
-    <div class="hstats">
-      <div class="hstat"><b>${sleeps}段</b><small>睡眠</small></div>
-      <div class="hstat"><b>${milk?`${milk}ml`:"—"}</b><small>奶量</small></div>
-      <div class="hstat"><b>${diapers}次</b><small>尿布</small></div>
-    </div>
+    <div class="history-card-meta"><span>${summary.confirmedCount} 条已确认</span>${pendingText}${context}</div>
+    <div class="history-facts">${facts.join("")}</div>
   </article>`;
 }
 

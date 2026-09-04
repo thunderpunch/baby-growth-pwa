@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {historyDateLabel,monthLabel,monthRange,recentRange,shiftMonthKey,validMonthKey} from "../history.js";
+import {historyDateLabel,monthLabel,monthRange,recentRange,shiftMonthKey,summarizeHistoryDay,validMonthKey} from "../history.js";
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const historySource=await readFile(path.join(root,"history.js"),"utf8");
@@ -28,5 +28,24 @@ assert.doesNotMatch(historySource,/\.slice\(0,\s*30\)/,"recent 30 days must be a
 assert.match(historySource,/data-history-recent/,"History must expose a recent 30 day mode");
 assert.doesNotMatch(historySource,/data-history-this-month|historyMonthSummary/,"History must not restore redundant current-month or summary controls");
 assert.doesNotMatch(historySource,/historyJumpDate|data-history-jump|history-date-jump/,"History must not duplicate the global date-jump control");
+
+const summary=summarizeHistoryDay("2026-09-04",[
+  {id:"n",date:"2026-09-04",type:"sleep",status:"confirmed",deleted:false,nightAnchor:true,startDateTime:"2026-09-03T19:30",endDateTime:"2026-09-04T05:30"},
+  {id:"nap",date:"2026-09-04",type:"sleep",status:"confirmed",deleted:false,startDateTime:"2026-09-04T10:00",endDateTime:"2026-09-04T11:05"},
+  {id:"m1",date:"2026-09-04",type:"milk",status:"confirmed",deleted:false,time:"08:00",amount:"180"},
+  {id:"m2",date:"2026-09-04",type:"milk",status:"confirmed",deleted:false,time:"12:00",amount:"160"},
+  {id:"d",date:"2026-09-04",type:"diaper",status:"confirmed",deleted:false,time:"12:05",diaperType:"尿 + 便"},
+  {id:"food",date:"2026-09-04",type:"diet",status:"confirmed",deleted:false,time:"12:10"},
+  {id:"h",date:"2026-09-04",type:"health",status:"confirmed",deleted:false,time:"20:00",temperature:"38.2"}
+],null);
+assert.equal(summary.nightMinutes,600);
+assert.equal(summary.napCount,1);
+assert.equal(summary.milkCount,2);
+assert.equal(summary.milkTotal,340);
+assert.equal(summary.stoolCount,1);
+assert.deepEqual(summary.stoolTimes,["12:05"]);
+assert.equal(summary.dietCount,1);
+assert.equal(summary.maxTemperature,38.2);
+assert.doesNotMatch(historySource,/getAllRecords|history-last-occurrence|data-history-last/,"richer history cards must remain range-bounded and must not grow a separate last-occurrence scanner");
 
 console.log("history range regressions passed");

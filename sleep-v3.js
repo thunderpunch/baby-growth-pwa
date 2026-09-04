@@ -1,4 +1,5 @@
 import {getRecord,getRecordsByDate,getRecordsInRange,putRecord} from "./db.js";
+import {recentConfirmed} from "./record-entry-utils.js";
 
 const $=id=>document.getElementById(id);
 const SLEEP_METHODS=["自主入睡","奶睡","抱睡","拍睡","摇睡","其他"];
@@ -169,17 +170,30 @@ function modalShell(title,body,saveLabel="保存"){
     <div class="sleep-v3-actions"><button type="button" class="secondary" data-sleep-v3-cancel>取消</button><button type="button" class="primary" data-sleep-v3-save>${saveLabel}</button></div>
   </div>`;
 }
-function showModal(html){const m=ensureModal();m.innerHTML=html;m.classList.remove("hidden");bindMethodChoices(m);}
+function bindRecentSleep(root){
+  root.querySelectorAll("[data-sleep-v3-recent-edit]").forEach(button=>button.onclick=async event=>{
+    event.preventDefault();
+    const record=await getRecord(button.dataset.sleepV3RecentEdit);
+    if(record)await openSleep(record);
+  });
+}
+function showModal(html){const m=ensureModal();m.innerHTML=html;m.classList.remove("hidden");bindMethodChoices(m);bindRecentSleep(m);}
 function hideModal(){ensureModal().classList.add("hidden");modalState=null;}
 function timeField(id,label,value=""){
   return `<label>${label}<div class="sleep-v3-time"><input id="${id}" type="time" value="${esc(value)}"><button type="button" data-sleep-v3-now="${id}">现在</button></div></label>`;
 }
 function noteField(value=""){return `<label>备注<input id="sleepV3Note" type="text" value="${esc(value)}" placeholder="可选"></label>`;}
+function recentSleepMarkup(records,currentId=""){
+  const ordinary=(records||[]).filter(record=>record.type==="sleep"&&record.status==="confirmed"&&!record.deleted&&!record.nightAnchor);
+  const recent=recentConfirmed(ordinary,"sleep",{excludeId:currentId,limit:3});
+  if(!ordinary.length||!recent.length)return "";
+  return `<section class="sleep-v3-recent"><div><b>今天已记录 ${ordinary.length} 段睡眠</b><small>补录前可以先确认一下</small></div>${recent.map(item=>`<button type="button" data-sleep-v3-recent-edit="${esc(item.id)}"><time>${esc(tpart(item.startDateTime)||"—")}</time><span>${esc(tpart(item.startDateTime)||"?")}～${esc(tpart(item.endDateTime)||"?")} · ${esc(fmtDuration(duration(item)))}</span><em>修改</em></button>`).join("")}</section>`;
+}
 async function openSleep(record=null){
-  const pageDate=$("pageDate")?.value||dateKey(new Date());
+  const pageDate=$("pageDate")?.value||dateKey(new Date()),records=await getRecordsByDate(pageDate,{includeDeleted:false}),recentMarkup=recentSleepMarkup(records,record?.id||"");
   modalState={kind:"sleep",record,pageDate};
   showModal(modalShell(record?.id?"修改睡眠":"记录睡眠",
-    `<div class="sleep-v3-pair">${timeField("sleepV3Start","睡着时间",tpart(record?.startDateTime))}${timeField("sleepV3End","醒来时间",tpart(record?.endDateTime))}</div>
+    `${recentMarkup}<div class="sleep-v3-pair">${timeField("sleepV3Start","睡着时间",tpart(record?.startDateTime))}${timeField("sleepV3End","醒来时间",tpart(record?.endDateTime))}</div>
      <label>入睡方式${methodChoices(record?.sleepMethod||"")}</label>
      ${temperatureField(record?.roomTemperatureC)}
      ${noteField(record?.note||"")}

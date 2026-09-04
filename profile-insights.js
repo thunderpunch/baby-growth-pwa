@@ -1,5 +1,5 @@
 import {getRecordsInRange} from "./db.js";
-import {recordDurationMinutes,shiftDateKey,sleepLocalRange} from "./record-model.js";
+import {isStrictDayNap,recordDurationMinutes,shiftDateKey,sleepLocalRange} from "./record-model.js";
 
 export const PROFILE_INSIGHT_DAYS=14;
 const MIN_SAMPLES=3;
@@ -31,14 +31,6 @@ function esc(value=""){
 function liveSleeps(records){
   return records.filter(record=>record?.type==="sleep"&&record.status==="confirmed"&&!record.deleted);
 }
-function strictDayNap(record){
-  if(record.nightAnchor)return false;
-  const duration=recordDurationMinutes(record),range=sleepLocalRange(record);
-  const start=clockMinutes(range.startTime),end=clockMinutes(range.endTime);
-  return Number.isFinite(duration)&&duration>=10&&duration<=210&&
-    range.startDate&&range.startDate===range.endDate&&
-    start!=null&&end!=null&&start>=5*60&&end<=21*60;
-}
 function topMethod(records){
   const counts=new Map();
   for(const record of records){
@@ -60,7 +52,7 @@ export function deriveProfileInsights(records){
   const napCounts=new Map([...trackedDates].map(date=>[date,0]));
   let napSamples=0;
   for(const record of sleeps){
-    if(strictDayNap(record)){
+    if(isStrictDayNap(record)){
       napCounts.set(record.date,(napCounts.get(record.date)||0)+1);
       napSamples++;
     }

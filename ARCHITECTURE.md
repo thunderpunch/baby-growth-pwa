@@ -108,6 +108,14 @@ Sleep 唯一业务 owner：
 
 `sleep-v3.js` 直接渲染 `#lastNightSummary`；旧 `nightSleepAt / nightWakeAt / nightSleepEntries` 隐藏挂载已经删除，也不再存在 `ensureNightCard()` DOM 兼容逻辑。
 
+### `record-entry-utils.js`
+
+高频补录上下文与轻量重复提醒的纯函数 owner。
+
+- 只处理同日已确认记录排序 / 简要预览 / 疑似重复启发式；
+- 不访问 DOM、不访问 IndexedDB、不自动写入或合并数据；
+- Sleep 不使用这里的重复算法，继续由 `sleep-v3.js` 的重叠检测负责。
+
 ### `timeline-v3.js`
 
 当天流水 projection。
@@ -116,7 +124,8 @@ Sleep 唯一业务 owner：
 - 普通 sleep 按开始时间；
 - 夜间主睡按最终早安时间进入早安所在日；
 - wake 按真实夜醒时间；
-- 每次按日 IndexedDB 查询，不逐行 `getRecord()`。
+- 每次按日 IndexedDB 查询，不逐行 `getRecord()`；
+- Today 的可见承载是可折叠“当天详情”，流水用于复盘而不是补录前置确认；有待确认模板时由 `app.js` 自动展开。
 
 ### `history.js`
 
@@ -131,6 +140,7 @@ History 唯一控制器。
 - 每次只通过 `getRecordsInRange()` / `getDaysInRange()` 读取当前范围；
 - 不进行 lifetime `getAllRecords()/getAllDays()`；
 - 不再提供重复的“跳到日期”控件；具体日期仍通过历史卡进入 Today，并复用全局 `pageDate`；
+- 日卡直接提供有意义的一日摘要（夜睡 / 严格小睡 / 奶 / 粑粑 / 饮食 / 尿布 / 夜醒 / 健康），不增加独立“最近一次”扫描入口；
 - 已删除无实质能力的“批量补录”入口。
 
 ### `data-io-v3.js`
