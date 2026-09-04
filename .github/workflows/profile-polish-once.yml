@@ -1,0 +1,97 @@
+name: profile-polish-once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/profile-polish-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply final profile integration patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_one(path, old, new):
+              p=Path(path); text=p.read_text()
+              if text.count(old)!=1:
+                  raise SystemExit(f"{path}: expected one occurrence of {old[:60]!r}, got {text.count(old)}")
+              p.write_text(text.replace(old,new))
+
+          # Sleep classification no longer depends on a manually maintained profile bedtime.
+          replace_one("sleep-v3.js","function inferredNightForDate(records,pageDate,bedtimeMin){","function inferredNightForDate(records,pageDate){")
+          replace_one("sleep-v3.js",'.filter(r=>basicClassify(r,bedtimeMin).kind==="night")','.filter(r=>basicClassify(r).kind==="night")')
+          replace_one("sleep-v3.js","const inferred=anchor?[]:inferredNightForDate(records,pageDate,bedtime);","const inferred=anchor?[]:inferredNightForDate(records,pageDate);")
+
+          # Make the baby name and final profile labels part of the static DOM.
+          replace_one("index.html",
+            '          <div class="sectiondesc">如果之前填错了，直接修正当前信息即可。</div>\n          <div class="fields2">',
+            '          <div class="sectiondesc">如果之前填错了，直接修正当前信息即可。</div>\n          <label class="baby-name-field">宝宝名<input id="babyName" type="text" maxlength="40" autocomplete="off" placeholder="例如：小满"></label>\n          <div class="fields2">')
+          replace_one("index.html",
+'''          <div class="fields2 section-gap">
+            <label>长期喂养方式
+              <select id="feedingMode">
+                <option value="">请选择</option>
+                <option value="母乳为主">母乳为主</option>
+                <option value="配方奶为主">配方奶为主</option>
+                <option value="混合喂养">混合喂养</option>
+                <option value="其它/不固定">其它 / 不固定</option>
+              </select>
+            </label>
+            <label>平日主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
+            <label>周末主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
+          </div>''',
+'''          <label class="section-gap">长期喂养方式
+            <select id="feedingMode">
+              <option value="">请选择</option>
+              <option value="母乳为主">母乳为主</option>
+              <option value="配方奶为主">配方奶为主</option>
+              <option value="混合喂养">混合喂养</option>
+              <option value="其它/不固定">其它 / 不固定</option>
+            </select>
+          </label>
+          <div class="fields2 section-gap">
+            <label>平日主要照护者<input id="weekdayCaregiver" type="text" placeholder="例如：爷爷奶奶"></label>
+            <label>周末主要照护者<input id="weekendCaregiver" type="text" placeholder="例如：父母"></label>
+          </div>''')
+          replace_one("index.html",'<button id="correctProfileBtn" class="secondary">修正当前信息</button>','<button id="correctProfileBtn" class="secondary">保存当前档案</button>')
+          replace_one("index.html",'基础资料、成长阶段和记录设置分开管理。只有会改变一段时期分析背景的变化，才需要进入新阶段。','基础资料、长期背景和记录设置分开管理。可从实际记录推导的近期作息无需重复填写。')
+
+          # Retire the remaining visual rules for the removed weekday/weekend profile tabs.
+          p=Path("styles.css"); text=p.read_text()
+          text,n=re.subn(r'\.segment\{[^}]*\}\.segment button\{[^}]*\}\.segment button\.active\{[^}]*\}', '', text, count=1)
+          if n!=1: raise SystemExit(f"styles.css: expected one legacy segment rule group, got {n}")
+          p.write_text(text)
+          p=Path("large-text.css"); text=p.read_text()
+          text=text.replace(' .large-text .segment button,',' .large-text .segment button,') if False else text
+          text=text.replace('.large-text .segment button,\n','')
+          text=text.replace('.large-text .segment,\n.large-text .display-choice','.large-text .display-choice')
+          p.write_text(text)
+
+          # Offline app shell must contain the new derived-insight module and its style.
+          p=Path("sw.js"); text=p.read_text()
+          text=re.sub(r'const CACHE_NAME="[^"]+";', 'const CACHE_NAME="baby-growth-pwa-v1.4.4-profile-insights";', text, count=1)
+          old='"./record-model.js","./record-templates.js","./sleep-v3.js","./sleep-v3.css","./timeline-v3.js",'
+          new='"./record-model.js","./record-templates.js","./profile-insights.js","./profile-insights.css","./sleep-v3.js","./sleep-v3.css","./timeline-v3.js",'
+          if text.count(old)!=1: raise SystemExit("sw.js: app-shell insertion point missing")
+          p.write_text(text.replace(old,new))
+
+          Path('.github/workflows/profile-polish-once.yml').unlink()
+          PY
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Polish streamlined profile integration"
+          git push origin HEAD:main
