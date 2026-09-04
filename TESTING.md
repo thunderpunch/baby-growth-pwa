@@ -45,6 +45,8 @@ All pre-release verification checks passed.
 
 `tests/date-picker.test.mjs`
 
+`tests/large-text.test.mjs`
+
 `tests/record-templates.test.mjs`
 
 覆盖：
@@ -52,11 +54,14 @@ All pre-release verification checks passed.
 - DOM ID 不重复；
 - Today / History / Sleep 等关键挂载存在；
 - 顶部日期控制只在 Today 激活时可见，其它页面不能出现无效全局日期选择器；
-- iPad Profile 页面在经典 1024 CSS px 横屏宽度前必须进入安全单列布局，Profile 根容器和主要列必须允许收缩，不能制造页面级横向滚动；
+- iPad Profile 页面主要列和内部表单必须允许收缩，不能制造页面级横向滚动；
+- 自定义日期控件和同一行的 select/text 控件共享 `--control-h` 与表单上边距，避免出生日期/性别等可见组件错位；
 - 自定义日期选择器固定渲染 6 周 / 42 格，5 周月和 6 周月切换不能改变面板高度；
 - 日期选择器显示可直接选择的前后月日期，支持 iPad 左右滑动切月，并让上月 / 下月 / 今天动作遵守输入的 min/max；
+- 大字模式必须明显放大高频操作/选择文本，控件以 min-height + 内容自适应承载，不允许靠固定高度裁切文字；Timeline、Profile 设置、Sleep 操作、日期控件都必须参与大字模式；
 - 吃奶自动模板只看当天是否已有吃奶，不得被尿布、辅食、睡眠等其它记录阻断；最多回看 3 个自然日并取最近一个“已完成处理”的确认吃奶日期；
-- 某来源日仍有未处理吃奶 pending 时不能向后传播，避免只确认部分模板就产生半成品下一日模板；全部确认/跳过后，剩余 confirmed milk 才能成为后续来源；
+- 某来源日仍有未处理吃奶 pending 时不能向后传播；全部确认/跳过后，剩余 confirmed milk 才能成为后续来源；
+- 目标日模板尚未开始处理时必须继续同步来源日的时间、奶量、类型和记录集合；目标日一旦开始确认/跳过则冻结，不后台重写用户决策；
 - 奶和饮食模板策略独立，模板生成不得使用 `getAllRecords()` 全历史扫描，也不得恢复 DOM 监听桥；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
@@ -97,10 +102,11 @@ All pre-release verification checks passed.
 
 - 可并行 feature 不退化成长串 `await import()` waterfall；
 - Today 不等待 Data I/O；
-- 首屏 CSS 尽早请求；
+- 首屏 CSS 尽早请求，包括会在设置 hydration 后立即生效的 `large-text.css`；
 - Sleep 正常 refresh 不做 lifetime 全库扫描；
 - Sleep 不用 `setInterval()` 轮询日期；
 - 一次 refresh 只做一次当天 analysis；
+- 保存 Sleep/Good Morning 后，sleep projection 必须在通用 metrics 重建之后再完成最终覆盖，防止昨夜主睡短暂被计入小睡；同步观察只允许当前 metrics 的 `childList`，触发后立即断开，不能演化成长驻 subtree observer；
 - Timeline 一次按日查询，不逐行 `getRecord()`；
 - observer 不监听会被自身 projection 修改的深层 DOM；
 - 待确认模板只能做有限日期范围查询，不能回到 lifetime `getAllRecords()`；
@@ -170,7 +176,8 @@ node scripts/verify.mjs
 - 跨午夜；
 - 不完整事实；
 - 编辑后重新 canonicalize；
-- timeline point。
+- timeline point；
+- Good Morning 保存后不切换日期，首页小睡统计也必须立刻排除昨夜主睡。
 
 如果 bug 是“这条记录应该显示在几点”，测试直接断言 temporal / `recordTimelineClock()` / `recordTimelineMs()`，不要只测 UI 字符串。
 
@@ -185,6 +192,8 @@ node scripts/verify.mjs
 - 多个历史日期都有吃奶时只取最近一个已经完成待确认处理的日期；
 - 来源日仍有未处理吃奶 pending 时不能向后传播；
 - 来源日 pending 全部确认/跳过后，剩余 confirmed milk 才可向后传播；
+- 未处理的目标日模板在来源时间/奶量/类型变化后自动同步；来源集合变化时新增/退休对应 pending；
+- 目标日一旦开始确认/跳过则停止同步；
 - 奶与饮食模板互不阻断；
 - 用户已经处理过当天模板后不重复生成；
 - 禁止 `getAllRecords()` 与 DOM 事件桥接。
@@ -201,18 +210,20 @@ node scripts/verify.mjs
 - 禁止全库扫描；
 - 不恢复已经删除的重复控件。
 
-### iPad / 响应式布局 / 日期选择器
+### iPad / 响应式布局 / 日期选择器 / 大字
 
 至少确认：
 
-- 1024 CSS px 横屏边界；
 - Profile / Data 的主要 grid item 都允许 `min-width:0` 收缩；
+- 出生日期自定义 trigger 与同行 select 在高度、顶部间距上对齐；
 - 原生表单控件或自定义日期触发器不会撑宽 grid；
 - 不用单纯 `overflow-x:hidden` 掩盖本应消除的内容溢出；
 - 日历始终保持 6 行，跨月份切换没有高度跳变；
 - 相邻月份日期可直接选择；
 - iPad 左右滑动可以切月，同时垂直手势不被误判为切月；
-- min/max 会禁用完全不可选的相邻月份和不可用的“今天”。
+- min/max 会禁用完全不可选的相邻月份和不可用的“今天”；
+- 大字模式的确认/保存/选择/待确认操作明显大于舒适模式，并且长文案换行后按钮高度自动增长；
+- 大字模式下 Quickbar、Timeline、Profile、Data、Sleep、日期选择器均不能发生文本裁切或横向撑宽。
 
 ### 模块拆分 / DOM 清理
 
@@ -258,9 +269,13 @@ node scripts/verify.mjs
 - 页面能启动，无白屏；
 - Today 能看到日期前后切换和“今天”，切到 History / 档案 / 数据后日期控件消失；
 - iPad 横屏进入档案页不能横向拖动整个页面；
+- 档案页出生日期和性别、通常放床和入睡耗时等同一行可见控件对齐；
+- 大字模式切换后主要操作文字明显变大，长按钮/待确认项/睡眠方式不裁字、不撑出页面；
 - 打开日期选择器，在不同月份之间切换时面板高度保持稳定；左右滑动能切月，前后月淡化日期可以直接选择；
 - 当天没有吃奶时，昨天没记录但前天有记录，首页应出现来自前天的吃奶待确认模板；当天已有尿布/辅食等其它记录也不能阻止它；
+- 来源日修改某次吃奶时间后，尚未处理的今天待确认模板应自动同步；一旦今天开始确认/跳过则停止后台改写；
 - 只确认一部分吃奶模板后，下一天不能只继承已确认的半套；当天剩余模板全部处理完成后，最终确认事实集合才允许向后传播；
+- 填写早安后无需切日期，小睡觉数/小睡总计立即保持正确，不包含昨夜主睡；
 - 新增一条普通记录；
 - 睡眠、早安、晚安、夜醒打开/保存；
 - History 最近30天与按月切换；
