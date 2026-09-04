@@ -20,6 +20,13 @@ assert.doesNotMatch(js,/custom-date-blank/,"variable blank-cell calendar must no
 assert.match(js,/classList\.add\("is-outside-month"\)/,"adjacent-month dates must be rendered explicitly");
 assert.match(css,/\.custom-date-day\.is-outside-month\{/,"adjacent-month dates must have a distinct muted style");
 
+// A custom date trigger replaces a native form input and therefore must share the same
+// vertical rhythm and control-height variable as adjacent select/text controls.
+assert.match(css,/\.custom-date-trigger\{[^}]*height:var\(--control-h,46px\)[^}]*min-height:var\(--control-h,46px\)[^}]*margin-top:5px/,
+  "custom date fields must align with adjacent standard form controls");
+assert.match(css,/\.date-nav \.custom-date-trigger-compact\{[^}]*margin-top:0/,
+  "Today title-bar date trigger must opt out of form-field top spacing");
+
 // Touch-first iPad navigation and input bounds are part of the picker contract.
 assert.match(js,/addEventListener\("touchstart"/,"date picker must support touch swipe navigation");
 assert.match(js,/addEventListener\("touchend"/,"date picker must finish touch swipe navigation");
