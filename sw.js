@@ -58,10 +58,26 @@ async function networkFirst(request){
   }
 }
 
+async function cacheFirst(request){
+  const cached=await caches.match(request);
+  if(cached) return cached;
+  const response=await fetch(request);
+  await putInCurrentCache(request,response);
+  return response;
+}
+
 self.addEventListener("fetch",event=>{
-  const request=event.request;
-  if(request.method!=="GET") return;
-  const url=new URL(request.url);
+  if(event.request.method!=="GET") return;
+  const url=new URL(event.request.url);
   if(url.origin!==self.location.origin) return;
-  event.respondWith(networkFirst(request));
+
+  const navigation=event.request.mode==="navigate";
+  const remoteConfig=url.pathname.endsWith("/home-config.json");
+  const mutableCode=["script","style","manifest"].includes(event.request.destination);
+
+  // Mutable application code always revalidates online and falls back to Cache Storage offline.
+  // Icons and other stable assets remain cache-first for fast repeat loads.
+  event.respondWith(navigation || remoteConfig || mutableCode
+    ? networkFirst(event.request)
+    : cacheFirst(event.request));
 });
