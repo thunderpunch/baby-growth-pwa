@@ -1,4 +1,4 @@
-const CACHE_NAME="baby-growth-pwa-v1.4.5-streamlined-profile";
+const CACHE_NAME="baby-growth-pwa-v1.4.6-sleep-metric-owner";
 const APP_SHELL=[
   "./","./index.html","./styles.css","./styles-base.css","./layout-fix.css?v=1.1.8","./app.js","./export-ipad.js",
   "./profile-save-guard.js","./baby-name.js","./baby-name.css","./time-behavior.js","./time-picker.css","./date-picker.js","./date-picker.css","./large-text.css",
@@ -58,26 +58,10 @@ async function networkFirst(request){
   }
 }
 
-async function cacheFirst(request){
-  const cached=await caches.match(request);
-  if(cached) return cached;
-  const response=await fetch(request);
-  await putInCurrentCache(request,response);
-  return response;
-}
-
 self.addEventListener("fetch",event=>{
-  if(event.request.method!=="GET") return;
-  const url=new URL(event.request.url);
+  const request=event.request;
+  if(request.method!=="GET") return;
+  const url=new URL(request.url);
   if(url.origin!==self.location.origin) return;
-
-  const navigation=event.request.mode==="navigate";
-  const remoteConfig=url.pathname.endsWith("/home-config.json");
-  const mutableCode=["script","style","manifest"].includes(event.request.destination);
-
-  // Mutable application code always revalidates online and falls back to Cache Storage offline.
-  // Icons and other stable assets remain cache-first for fast repeat loads.
-  event.respondWith(navigation || remoteConfig || mutableCode
-    ? networkFirst(event.request)
-    : cacheFirst(event.request));
+  event.respondWith(networkFirst(request));
 });
