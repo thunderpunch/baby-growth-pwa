@@ -35,6 +35,9 @@ function fmtDay(v){if(!v)return "";const [,m,d]=v.split("-");return `${Number(m)
 function fmtTemperature(value){const n=Number(value);return Number.isFinite(n)?`${Number.isInteger(n)?n:n.toFixed(1)}℃`:"";}
 function nowClock(){const d=new Date();return {date:dateKey(d),time:`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`};}
 function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function setText(node,text){
+  if(node&&node.textContent!==text)node.textContent=text;
+}
 function overlapMinutes(a,b){
   const a0=stampMs(a.startDateTime),a1=stampMs(a.endDateTime),b0=stampMs(b.startDateTime),b1=stampMs(b.endDateTime);
   if([a0,a1,b0,b1].some(x=>x==null))return 0;

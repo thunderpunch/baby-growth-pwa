@@ -24,6 +24,7 @@ assert.doesNotMatch(renderMetrics,/metrics.*innerHTML|\$\("metrics"\)\.innerHTML
 assert.match(app,/resetSleepMetricPlaceholders\(\);[\s\S]*?await loadDay\(\)/,"date changes must clear stale sleep values before async loading");
 
 assert.match(sleep,/function renderSleepMetrics\(a\)/,"Sleep owner must render sleep metrics");
+assert.match(sleep,/function setText\(node,text\)\{[\s\S]*?node\.textContent!==text[\s\S]*?node\.textContent=text[\s\S]*?\}/,"Sleep metric renderer helper must exist and update text idempotently");
 assert.match(sleep,/metricNapCountValue/,"Sleep owner must address stable nap metric IDs");
 assert.match(sleep,/metricEarlyWakeValue/,"Sleep owner must address stable early-wake metric ID");
 assert.doesNotMatch(sleep,/querySelectorAll\("\.metric"\)/,"Sleep metrics must not depend on positional metric order");
