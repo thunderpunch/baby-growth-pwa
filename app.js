@@ -227,6 +227,7 @@ function showView(name){
 async function changeDate(dateKey,followsToday=false){
   state.date=dateKey;
   $("pageDate").value=dateKey;
+  resetSleepMetricPlaceholders();
   await loadDay();
   if(followsToday)state.lastToday=dateKey;
 }
@@ -266,22 +267,22 @@ async function loadDay(){
 
 function confirmed(records){return records.filter(record=>record.status==="confirmed"&&!record.deleted);}
 function pending(records){return records.filter(record=>record.status==="pending"&&!record.deleted);}
+function setMetricText(id,text){
+  const node=$(id);
+  if(node&&node.textContent!==text)node.textContent=text;
+}
+function resetSleepMetricPlaceholders(){
+  setMetricText("metricNapCountValue","—");
+  setMetricText("metricNapTotalValue","—");
+  setMetricText("metricNapTotalLabel","小睡总计");
+  setMetricText("metricEarlyWakeValue","—");
+  $("metrics")?.setAttribute("aria-busy","true");
+}
 function renderMetrics(records){
   const live=confirmed(records),templates=pending(records);
-  const sleeps=live.filter(record=>record.type==="sleep");
-  const sleepMinutes=sleeps.reduce((sum,record)=>sum+(durationMinutes(record.startTime,record.endTime)||0),0);
   const milkTotal=live.filter(record=>record.type==="milk").reduce((sum,record)=>sum+(Number(record.amount)||0),0);
-  const wakes=live.filter(record=>record.type==="wake");
-  const suspected=wakes
-    .filter(record=>record.result==="no_resleep"||(minutesOf(record.wakeTime)!=null&&minutesOf(record.wakeTime)<330))
-    .sort((a,b)=>(a.wakeTime||"").localeCompare(b.wakeTime||""))[0];
-
-  $("metrics").innerHTML=`
-    <div class="metric"><b>${sleeps.length} 觉</b><small>小睡</small></div>
-    <div class="metric"><b>${sleepMinutes?fmtDuration(sleepMinutes):"—"}</b><small>小睡总计</small></div>
-    <div class="metric"><b>${milkTotal?`${milkTotal}ml`:"—"}</b><small>已确认奶量</small></div>
-    <div class="metric"><b>${suspected?.wakeTime||"—"}</b><small>疑似早醒</small></div>
-    <div class="metric"><b>${templates.length} 条</b><small>待确认模板</small></div>`;
+  setMetricText("metricMilkTotalValue",milkTotal?`${milkTotal}ml`:"—");
+  setMetricText("metricPendingCountValue",`${templates.length} 条`);
 }
 function recordTime(record){
   return record.time||record.startTime||record.wakeTime||"99:99";
@@ -488,7 +489,7 @@ async function openRecordModal(type,record=null){
           <label>便量<div class="optionchips" id="stoolAmount">${["少","中","多"].map(value=>`<button type="button" class="optionchip ${value===item.stoolAmount?"active":""}" data-choice="${value}">${value}</button>`).join("")}</div></label>
           <label>颜色<div class="optionchips" id="stoolColor">${["黄","棕","绿","黑","红","灰白","其它"].map(value=>`<button type="button" class="optionchip ${value===item.stoolColor?"active":""}" data-choice="${value}">${value}</button>`).join("")}</div></label>
         </div>
-        <label class="form-label">性状<div class="optionchips" id="stoolForm">${["稀","糊状","成形","偏硬","水样","其它"].map(value=>`<button type="button" class="optionchip ${value===item.stoolForm?"active":""}" data-choice="${value}">${value}</button>`).join("")}</div></label>
+        <label class="form-label">性状<div class="optionchips" id="stoolForm">${["水样","稀","糊状","较稠","成形","偏硬","其它"].map(value=>`<button type="button" class="optionchip ${value===item.stoolForm?"active":""}" data-choice="${value}">${value}</button>`).join("")}</div></label>
       </div>
       <label class="form-label">备注<input id="fNote" type="text" value="${escapeHTML(item.note||"")}" placeholder="例如：比平时稀；颜色明显不同"></label>`;
   }else if(type==="wake"){

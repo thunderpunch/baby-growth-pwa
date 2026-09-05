@@ -5,6 +5,7 @@ const $=id=>document.getElementById(id);
 const SLEEP_METHODS=["自主入睡","奶睡","抱睡","拍睡","摇睡","其他"];
 let modalState=null;
 let refreshTimer=null;
+let refreshRevision=0;
 let editingWakeId=null;
 let wakeSaveContext=null;
 let forcedWakeNightKey="";
@@ -150,14 +151,13 @@ function renderNightCard(pageDate,a){
     </div>
     <div class="last-night-facts">${first.sleepMethod?`<span>${esc(first.sleepMethod)}</span>`:""}${temperature?`<span>室温 ${temperature}</span>`:""}<span>夜醒 ${a.wakes.length} 次</span>${early?`<span class="sleep-v3-warn">疑似早醒 ${early}</span>`:""}${!a.anchor?`<span>系统推测</span>`:""}</div>`;
 }
-function patchMetrics(pageDate,a){
-  const metrics=$("metrics");if(!metrics)return;
-  const items=Array.from(metrics.querySelectorAll(".metric"));if(items.length<4)return;
+function renderSleepMetrics(a){
   const napMin=a.naps.reduce((s,r)=>s+(duration(r)||0),0);
-  const set=(el,sel,text)=>{const n=el.querySelector(sel);if(n&&n.textContent!==text)n.textContent=text;};
-  set(items[0],"b",`${a.naps.length} 觉`);set(items[0],"small","小睡");
-  set(items[1],"b",napMin?fmtDuration(napMin):"—");set(items[1],"small",a.uncertain.length?`小睡总计 · ${a.uncertain.length}段待判断`:"小睡总计");
-  set(items[3],"b",a.wakeEarly?.wakeTime||a.inferredEarly||"—");set(items[3],"small","疑似早醒");
+  setText($("metricNapCountValue"),`${a.naps.length} 觉`);
+  setText($("metricNapTotalValue"),napMin?fmtDuration(napMin):"—");
+  setText($("metricNapTotalLabel"),a.uncertain.length?`小睡总计 · ${a.uncertain.length}段待判断`:"小睡总计");
+  setText($("metricEarlyWakeValue"),a.wakeEarly?.wakeTime||a.inferredEarly||"—");
+  $("metrics")?.removeAttribute("aria-busy");
 }
 function ensureModal(){
   let overlay=$("sleepV3Modal");if(overlay)return overlay;
@@ -232,19 +232,9 @@ function warning(title,lines,confirmText,onConfirm){
   box.querySelector("[data-sleep-v3-force]").onclick=onConfirm;
 }
 function refreshAppDay(){
-  const pageDate=$("pageDate"),metrics=$("metrics");
-  let renderObserver=null,observerTimeout=null;
-  if(metrics&&typeof MutationObserver!=="undefined"){
-    renderObserver=new MutationObserver(()=>{
-      renderObserver.disconnect();
-      if(observerTimeout)clearTimeout(observerTimeout);
-      scheduleRefresh(0);
-    });
-    renderObserver.observe(metrics,{childList:true});
-    observerTimeout=setTimeout(()=>renderObserver?.disconnect(),1500);
-  }
+  const pageDate=$("pageDate");
   if(pageDate)pageDate.dispatchEvent(new Event("change",{bubbles:true}));
-  scheduleRefresh(80);
+  scheduleRefresh(0);
 }
 async function persistOrdinary(c){await putRecord(c);hideModal();refreshAppDay();showToast("睡眠已保存");}
 async function mergeOrdinary(existing,candidate){
@@ -377,12 +367,17 @@ async function persistWakeNightKey(){
   if(record&&record.nightKey!==c.nightKey)await putRecord({...record,nightKey:c.nightKey,updatedAt:new Date().toISOString()});
   wakeSaveContext=null;forcedWakeNightKey="";scheduleRefresh(80);
 }
-function scheduleRefresh(delay=40){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refreshAll().catch(e=>console.warn("Sleep V3 refresh failed",e)),delay);}
-async function refreshAll(){
+function scheduleRefresh(delay=40){
+  const revision=++refreshRevision;
+  clearTimeout(refreshTimer);
+  refreshTimer=setTimeout(()=>refreshAll(revision).catch(e=>console.warn("Sleep V3 refresh failed",e)),delay);
+}
+async function refreshAll(revision){
   const pageDate=$("pageDate")?.value||dateKey(new Date());
   const analysis=await analysisForDate(pageDate);
+  if(revision!==refreshRevision||pageDate!==($("pageDate")?.value||dateKey(new Date())))return;
   renderNightCard(pageDate,analysis);
-  patchMetrics(pageDate,analysis);
+  renderSleepMetrics(analysis);
 }
 function bindEvents(){
   document.addEventListener("click",async e=>{

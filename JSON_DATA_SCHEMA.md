@@ -171,7 +171,7 @@
 
 - `milk`：`amount`, `feedType`
 - `diet`：`dietType`, `amount`, `content`, `note`
-- `diaper`：`diaperType`, `urineAmount`, `stoolAmount`, `stoolColor`, `stoolForm`, `note`
+- `diaper`：`diaperType`, `urineAmount`, `stoolAmount`, `stoolColor`, `stoolForm`, `note`。当前 UI 的 `stoolForm` 词汇为 `水样 / 稀 / 糊状 / 较稠 / 成形 / 偏硬 / 其它`；其中“较稠”表示仍未成形但明显比普通糊状更厚。历史已有字符串原样保留。
 - `health`：`temperature`, `symptoms`, `medication`
 - `growth`：`weight`, `height`, `headCircumference`, `sourceNote`
 - `medical`：`eventType`, `content`, `note`

@@ -75,6 +75,8 @@ All pre-release verification checks passed.
 - Profile 当前 UI 不得恢复手填“通常放床 / 入睡耗时 / 典型小睡 / 常用哄睡方式”；长期背景字段必须保持明确；
 - `profile-insights.js` 只做最近 14 天有界查询，样本不足不宣称规律，且不得写回 Profile/事实记录；
 - Sleep 分类不得重新依赖手填 Profile bedtime；
+- Today 小睡 / 疑似早醒指标只能由 Sleep owner 写入；`app.js` 不得计算或整段替换这些指标。日期切换必须先清旧值，过期 Sleep 异步查询不得回写当前日期，保存睡眠不得依赖 metrics `MutationObserver` 修正竞态；
+- 尿布性状需保留从 `水样 → 稀 → 糊状 → 较稠 → 成形 → 偏硬` 的连续词汇，旧值不迁移；
 - 早安 → 昨夜摘要 → 晚安顺序固定；
 - hidden legacy sleep mounts 不允许重新出现；
 - `sleep-v3.js` 必须直接渲染 `#lastNightSummary`，不能恢复 `ensureNightCard()` bridge；

@@ -52,7 +52,13 @@
           </div>
           <span class="auto-pill">自动汇总</span>
         </div>
-        <div id="metrics" class="metrics"></div>
+        <div id="metrics" class="metrics">
+          <div class="metric" data-metric-owner="sleep"><b id="metricNapCountValue">—</b><small>小睡</small></div>
+          <div class="metric" data-metric-owner="sleep"><b id="metricNapTotalValue">—</b><small id="metricNapTotalLabel">小睡总计</small></div>
+          <div class="metric" data-metric-owner="app"><b id="metricMilkTotalValue">—</b><small>已确认奶量</small></div>
+          <div class="metric" data-metric-owner="sleep"><b id="metricEarlyWakeValue">—</b><small>疑似早醒</small></div>
+          <div class="metric" data-metric-owner="app"><b id="metricPendingCountValue">0 条</b><small>待确认模板</small></div>
+        </div>
       </div>
 
       <div class="quick-head">

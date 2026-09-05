@@ -101,6 +101,8 @@ Sleep 唯一业务 owner：
 - 小睡/夜间/待判断 projection；
 - 可选睡眠区域室温 `roomTemperatureC`；
 - Sleep 分类不依赖人工维护的 Profile“通常放床时间”。
+- Today `#metrics` 是 `index.html` 的静态壳：`sleep-v3.js` 独占小睡数、小睡总计、疑似早醒三个值；`app.js` 只写奶量与待确认数。禁止重新引入“app 先错算、Sleep 再覆盖”的双 writer。
+- Sleep refresh 使用 generation token 丢弃过期日期查询结果；保存后的刷新不依赖 metrics `MutationObserver`。
 
 首页可见结构直接存在于 `index.html`：
 

@@ -52,6 +52,7 @@ runTest("record entry review UX regressions","tests/record-entry-utils.test.mjs"
 runTest("profile structure contracts","tests/profile-contract.test.mjs");
 runTest("profile insight regressions","tests/profile-insights.test.mjs");
 runTest("sleep environment temperature regressions","tests/sleep-environment.test.mjs");
+runTest("sleep metric ownership regressions","tests/sleep-metrics-owner.test.mjs");
 
 console.log("[4/7] Documentation contracts");
 runTest("documentation contract tests","tests/documentation-contract.test.mjs");

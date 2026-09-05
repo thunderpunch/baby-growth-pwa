@@ -51,15 +51,14 @@ assert.match(sleep,/getRecordsByDate\(previousDate/,"sleep analysis should read 
 assert.match(sleep,/getRecordsByDate\(pageDate/,"sleep analysis should read the selected day by indexed date");
 assert.match(sleep,/const\s+analysis=await\s+analysisForDate\(pageDate\)/,"one refresh should compute sleep analysis once");
 
-// Saving Good Morning/other sleep facts causes app.js to rebuild the generic metrics asynchronously.
-// Sleep must do one final projection after that exact child-list rebuild, otherwise the generic
-// render can race and temporarily count last night's anchor as a daytime nap.
+// Sleep metrics have one writer. app.js keeps a static metric shell and never rebuilds
+// sleep values, so save refreshes must not depend on a DOM observer race. Generation tokens
+// also prevent a slower previous-date query from overwriting the current date.
 const refreshAppDay=sleep.match(/function\s+refreshAppDay\(\)\{([\s\S]*?)\n\}\nasync function persistOrdinary/)?.[1]||"";
-assert.ok(refreshAppDay,"sleep refreshAppDay synchronization body not found");
-assert.match(refreshAppDay,/new MutationObserver/,"sleep save refresh must synchronize with the generic metrics rebuild");
-assert.match(refreshAppDay,/renderObserver\.observe\(metrics,\{childList:true\}\)/,"sleep refresh observer must watch only the metrics child-list rebuild");
-assert.match(refreshAppDay,/renderObserver\.disconnect\(\)/,"sleep refresh observer must self-disconnect after the one rebuild");
-assert.doesNotMatch(refreshAppDay,/subtree:true/,"sleep save synchronization must not become a broad long-lived subtree observer");
+assert.ok(refreshAppDay,"sleep refreshAppDay body not found");
+assert.doesNotMatch(refreshAppDay,/MutationObserver|renderObserver|observerTimeout/,"sleep save refresh must not coordinate through a metrics DOM observer");
+assert.match(sleep,/let\s+refreshRevision=0/,"sleep refresh must track a generation token");
+assert.match(sleep,/revision!==refreshRevision/,"stale sleep analysis must be discarded");
 
 // Timeline projection should perform one indexed-day read, rather than one IDB transaction per row.
 assert.match(timeline,/getRecordsByDate\(pageDate/,"timeline must batch records by indexed page date");
