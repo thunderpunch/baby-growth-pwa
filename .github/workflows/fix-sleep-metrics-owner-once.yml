@@ -1,0 +1,31 @@
+name: fix-sleep-metrics-owner-once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-sleep-metrics-owner-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply sleep metrics ownership fix
+        run: python scripts/fix-sleep-metrics-owner-once.py
+      - name: Run full verification
+        run: node scripts/verify.mjs
+      - name: Commit implementation and remove migration tools
+        run: |
+          rm scripts/fix-sleep-metrics-owner-once.py
+          rm .github/workflows/fix-sleep-metrics-owner-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix sleep metric ownership and stool consistency"
+          git push origin HEAD:main
