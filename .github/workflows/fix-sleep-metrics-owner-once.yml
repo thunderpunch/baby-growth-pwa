@@ -18,6 +18,35 @@ jobs:
           fetch-depth: 0
       - name: Apply sleep metrics ownership fix
         run: python scripts/fix-sleep-metrics-owner-once.py
+      - name: Update superseded performance contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('tests/performance-contract.test.mjs')
+          text=path.read_text(encoding='utf-8')
+          old='''// Saving Good Morning/other sleep facts causes app.js to rebuild the generic metrics asynchronously.
+          // Sleep must do one final projection after that exact child-list rebuild, otherwise the generic
+          // render can race and temporarily count last night's anchor as a daytime nap.
+          const refreshAppDay=sleep.match(/function\\s+refreshAppDay\\(\\)\\{([\\s\\S]*?)\\n\\}\\nasync function persistOrdinary/)?.[1]||"";
+          assert.ok(refreshAppDay,"sleep refreshAppDay synchronization body not found");
+          assert.match(refreshAppDay,/new MutationObserver/,"sleep save refresh must synchronize with the generic metrics rebuild");
+          assert.match(refreshAppDay,/renderObserver\\.observe\\(metrics,\\{childList:true\\}\\)/,"sleep refresh observer must watch only the metrics child-list rebuild");
+          assert.match(refreshAppDay,/renderObserver\\.disconnect\\(\\)/,"sleep refresh observer must self-disconnect after the one rebuild");
+          assert.doesNotMatch(refreshAppDay,/subtree:true/,"sleep save synchronization must not become a broad long-lived subtree observer");
+          '''
+          new='''// Sleep metrics have one writer. app.js keeps a static metric shell and never rebuilds
+          // sleep values, so save refreshes must not depend on a DOM observer race. Generation tokens
+          // also prevent a slower previous-date query from overwriting the current date.
+          const refreshAppDay=sleep.match(/function\\s+refreshAppDay\\(\\)\\{([\\s\\S]*?)\\n\\}\\nasync function persistOrdinary/)?.[1]||"";
+          assert.ok(refreshAppDay,"sleep refreshAppDay body not found");
+          assert.doesNotMatch(refreshAppDay,/MutationObserver|renderObserver|observerTimeout/,"sleep save refresh must not coordinate through a metrics DOM observer");
+          assert.match(sleep,/let\\s+refreshRevision=0/,"sleep refresh must track a generation token");
+          assert.match(sleep,/revision!==refreshRevision/,"stale sleep analysis must be discarded");
+          '''
+          if old not in text:
+              raise SystemExit('old performance contract block not found')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
       - name: Run full verification
         run: node scripts/verify.mjs
       - name: Commit implementation and remove migration tools
