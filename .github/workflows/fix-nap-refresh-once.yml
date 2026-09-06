@@ -1,0 +1,31 @@
+name: fix-nap-refresh-once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-nap-refresh-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply nap refresh repair
+        run: python scripts/fix-nap-refresh-once.py
+      - name: Run full verification
+        run: node scripts/verify.mjs
+      - name: Commit repair and remove one-time tools
+        run: |
+          rm scripts/fix-nap-refresh-once.py
+          rm .github/workflows/fix-nap-refresh-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix nap summary refresh after sleep writes"
+          git push origin HEAD:main
