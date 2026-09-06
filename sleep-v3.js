@@ -1,5 +1,6 @@
 import {getRecord,getRecordsByDate,getRecordsInRange,putRecord} from "./db.js";
 import {recentConfirmed} from "./record-entry-utils.js";
+import {isStrictDayNap} from "./record-model.js";
 
 const $=id=>document.getElementById(id);
 const SLEEP_METHODS=["自主入睡","奶睡","抱睡","拍睡","摇睡","其他"];
@@ -91,8 +92,7 @@ function basicClassify(r){
   const sm=minuteOf(tpart(r.startDateTime)),em=minuteOf(tpart(r.endDateTime)),cross=dpart(r.startDateTime)!==dpart(r.endDateTime);
   if(cross&&mins>=120)return {kind:"night",confidence:.98};
   if(mins>=300&&(sm>=17*60||em<=10*60))return {kind:"night",confidence:.94};
-  if(!cross&&mins<=210&&sm>=6*60&&em<=18*60+30)return {kind:"nap",confidence:.96};
-  if(!cross&&mins<=150&&sm>=7*60&&em<=20*60)return {kind:"nap",confidence:.86};
+  if(isStrictDayNap(r))return {kind:"nap",confidence:.98};
   return {kind:"uncertain",confidence:.45};
 }
 function nightAnchorFor(records,nightKey){
@@ -234,12 +234,14 @@ function warning(title,lines,confirmText,onConfirm){
   box.querySelector("[data-sleep-v3-back]").onclick=()=>box.classList.add("hidden");
   box.querySelector("[data-sleep-v3-force]").onclick=onConfirm;
 }
-function refreshAppDay(){
+async function refreshAppDay(){
   const pageDate=$("pageDate");
   if(pageDate)pageDate.dispatchEvent(new Event("change",{bubbles:true}));
-  scheduleRefresh(0);
+  const revision=++refreshRevision;
+  clearTimeout(refreshTimer);
+  await refreshAll(revision);
 }
-async function persistOrdinary(c){await putRecord(c);hideModal();refreshAppDay();showToast("睡眠已保存");}
+async function persistOrdinary(c){await putRecord(c);hideModal();await refreshAppDay();showToast("睡眠已保存");}
 async function mergeOrdinary(existing,candidate){
   const starts=[existing.startDateTime,candidate.startDateTime].filter(Boolean).sort(),ends=[existing.endDateTime,candidate.endDateTime].filter(Boolean).sort();
   const start=starts[0]||"",end=ends.at(-1)||"";
@@ -249,7 +251,7 @@ async function mergeOrdinary(existing,candidate){
   if(merged.roomTemperatureC==null)delete merged.roomTemperatureC;
   await putRecord(merged);
   if(candidate.id!==existing.id&&modalState?.record?.id)await putRecord({...candidate,deleted:true,deletedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
-  hideModal();refreshAppDay();showToast("重叠睡眠已合并");
+  hideModal();await refreshAppDay();showToast("重叠睡眠已合并");
 }
 async function saveOrdinary(){
   const c=ordinaryCandidate();
@@ -286,7 +288,7 @@ async function saveGoodnight(){
     createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()});
   if(!record)return showToast("室温请输入 0–50℃ 之间的数值");
   if(record.endDateTime&&stampMs(record.endDateTime)<=stampMs(record.startDateTime))return showToast("睡着时间必须早于已经记录的早安时间");
-  await putRecord(record);hideModal();refreshAppDay();showToast(old.id?"晚安已更新":"晚安已记录");
+  await putRecord(record);hideModal();await refreshAppDay();showToast(old.id?"晚安已更新":"晚安已记录");
 }
 async function openMorning(){
   const pageDate=$("pageDate")?.value||dateKey(new Date()),records=await getRecordsByDate(pageDate,{includeDeleted:false}),anchor=nightAnchorFor(records,pageDate);
@@ -305,7 +307,7 @@ async function persistMorning(record,conflict=null){
   if(conflict&&!conflict.nightAnchor){
     await putRecord({...conflict,deleted:true,deletedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
   }
-  await putRecord(record);hideModal();refreshAppDay();showToast(record.endDateTime?"早安已记录":"夜间睡眠已保存");
+  await putRecord(record);hideModal();await refreshAppDay();showToast(record.endDateTime?"早安已记录":"夜间睡眠已保存");
 }
 async function saveMorning(force=false){
   const old=modalState.record||{},st=$("sleepV3Start")?.value||"",et=$("sleepV3End")?.value||"";
@@ -348,7 +350,7 @@ async function injectWakeNightChoice(){
   label.querySelectorAll("[data-wake-night-key]").forEach(b=>b.onclick=e=>{e.preventDefault();activate(b.dataset.wakeNightKey);});
   $("fWake").addEventListener("change",()=>{if(record?.nightKey||forcedWakeNightKey)return;activate(defaultWakeNightKey(pageDate,$("fWake").value));});
 }
-function selectedWakeNightKey(){return document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.sleepV3Method||document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.wakeNightKey||"";}
+function selectedWakeNightKey(){return document.querySelector("#wakeNightChoice [data-wake-night-key].active")?.dataset.wakeNightKey||"";}
 function prepareWakeSave(){
   if(!$("fWake")||!$("wakeNightField"))return;
   wakeSaveContext={editingId:editingWakeId,date:$("pageDate")?.value||dateKey(new Date()),wakeTime:$("fWake").value,nightKey:selectedWakeNightKey(),startedAt:Date.now()};

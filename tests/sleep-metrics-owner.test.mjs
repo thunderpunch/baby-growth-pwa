@@ -23,6 +23,10 @@ assert.doesNotMatch(renderMetrics,/record\.type==="sleep"|sleepMinutes|suspected
 assert.doesNotMatch(renderMetrics,/metrics.*innerHTML|\$\("metrics"\)\.innerHTML/,"app.js must not replace the metric shell");
 assert.match(app,/resetSleepMetricPlaceholders\(\);[\s\S]*?await loadDay\(\)/,"date changes must clear stale sleep values before async loading");
 
+assert.match(sleep,/import \{isStrictDayNap\} from "\.\/record-model\.js"/,"Today sleep metrics must reuse the canonical strict-day-nap classifier");
+assert.match(sleep,/if\(isStrictDayNap\(r\)\)return \{kind:"nap",confidence:\.98\}/,"Today nap classification must flow through isStrictDayNap");
+assert.match(sleep,/async function refreshAppDay\(\)[\s\S]*?await refreshAll\(revision\)/,"sleep writes must synchronously hand off to the Sleep owner refresh rather than rely on a timer");
+assert.match(sleep,/persistOrdinary\(c\)[\s\S]*?await refreshAppDay\(\)/,"ordinary sleep save must await sleep metric refresh");
 assert.match(sleep,/function renderSleepMetrics\(a\)/,"Sleep owner must render sleep metrics");
 assert.match(sleep,/function setText\(node,text\)\{[\s\S]*?node\.textContent!==text[\s\S]*?node\.textContent=text[\s\S]*?\}/,"Sleep metric renderer helper must exist and update text idempotently");
 assert.match(sleep,/metricNapCountValue/,"Sleep owner must address stable nap metric IDs");
